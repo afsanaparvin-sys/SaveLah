@@ -1,13 +1,19 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { ProfileCard } from "@/components/Dashboard/ProfileCard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Bell, Palette } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
-import { userProfile } from "@/lib/mock-data"
+import { getUserProfile, type UserProfileData } from "@/lib/api"
 
 export default function ProfilePage() {
+  const [profile, setProfile] = useState<UserProfileData | null>(null)
+
+  useEffect(() => {
+    getUserProfile().then(setProfile).catch(console.error)
+  }, [])
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -22,7 +28,17 @@ export default function ProfilePage() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Profile Card */}
           <div className="lg:col-span-2">
-            <ProfileCard profile={userProfile} />
+            {profile ? (
+              <ProfileCard profile={{
+                name: profile.Name,
+                email: profile.Email,
+                phone: profile.MobilePhone,
+                bankAccountId: profile.BankAccountId,
+                bankAccountNumber: profile.BankAccountNumber,
+              }} />
+            ) : (
+              <p className="text-muted-foreground text-sm">Loading profile...</p>
+            )}
           </div>
 
           {/* Settings Sidebar */}
