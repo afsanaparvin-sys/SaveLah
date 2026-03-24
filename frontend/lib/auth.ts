@@ -15,10 +15,10 @@ export function getTokenPayload(): Record<string, string | number> | null {
 
 export function getUserName(): string {
   const payload = getTokenPayload();
-  return payload?.Name ?? "";
+  return payload?.Name ? String(payload.Name) : "";
 }
 
 export function getUserId(): string {
   const payload = getTokenPayload();
-  return payload?.UserId ?? "";
+  return payload?.UserId ? String(payload.UserId) : "";
 }
