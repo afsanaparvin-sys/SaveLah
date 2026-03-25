@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Bell, Search, ChevronDown, User, LogOut } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { getUserName } from "@/lib/auth"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,10 +18,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 export function Topbar() {
   const [hasNotifications] = useState(true)
   const router = useRouter()
+  const [name, setName] = useState("")
+
+  useEffect(() => {
+    setName(getUserName())
+  }, [])
+
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 
   const handleSignOut = () => {
-    // Clear any auth tokens/session here when real auth is added
-    router.push("/Login")
+    document.cookie = "auth_token=; path=/; max-age=0"
+    window.location.href = "/Login"
   }
 
   return (
@@ -78,12 +92,11 @@ export function Topbar() {
               <Avatar className="h-8 w-8">
                 <AvatarImage src="/avatar.jpg" alt="User" />
                 <AvatarFallback className="text-sm font-bold" style={{ background: "#2DD4BF", color: "#0F1923" }}>
-                  JD
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">
-                <p className="text-sm font-medium" style={{ color: "#0F1923" }}>John Doe</p>
-                <p className="text-xs" style={{ color: "#6B7F8E" }}>john@example.com</p>
+                <p className="text-sm font-medium" style={{ color: "#0F1923" }}>{name}</p>
               </div>
               <ChevronDown className="h-4 w-4" style={{ color: "#6B7F8E" }} />
             </Button>

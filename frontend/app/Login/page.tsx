@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { loginUser, signupUser } from "@/lib/api";
+import { toast } from "sonner";
 
 type Mode = "login" | "signup";
 
@@ -14,6 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
 
   // Signup fields
+  const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,16 +34,21 @@ export default function LoginPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const token = await loginUser(email, password);
+      document.cookie = `auth_token=${token}; path=/; SameSite=Strict`;
       router.push("/Dashboard");
-    }, 800);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!signupEmail || !signupPassword || !confirmPassword || !bankAccountId || !bankAccountNumber) {
+    if (!signupName || !signupEmail || !signupPassword || !confirmPassword || !bankAccountId || !bankAccountNumber) {
       setError("Please fill in all fields.");
       return;
     }
@@ -49,10 +57,15 @@ export default function LoginPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await signupUser(signupName, signupEmail, signupPassword, bankAccountId, bankAccountNumber);
+      switchMode("login");
+      toast.success("Account created! Please sign in.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed.");
+    } finally {
       setLoading(false);
-      router.push("/Dashboard");
-    }, 800);
+    }
   };
 
   const switchMode = (m: Mode) => {
@@ -188,6 +201,18 @@ export default function LoginPage() {
               <p style={styles.cardSub}>Get started with Savelah</p>
 
               <form onSubmit={handleSignup} style={styles.form}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Full Name</label>
+                  <input
+                    type="text"
+                    value={signupName}
+                    onChange={(e) => setSignupName(e.target.value)}
+                    placeholder="John Doe"
+                    style={styles.input}
+                    autoComplete="name"
+                  />
+                </div>
+
                 <div style={styles.field}>
                   <label style={styles.label}>Email</label>
                   <input
