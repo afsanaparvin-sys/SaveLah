@@ -22,3 +22,9 @@ export function getUserId(): string {
   const payload = getTokenPayload();
   return payload?.UserId ? String(payload.UserId) : "";
 }
+
+export function isTokenExpired(): boolean {
+  const payload = getTokenPayload();
+  if (!payload?.exp) return true;
+  return Date.now() / 1000 > Number(payload.exp);
+}
