@@ -90,7 +90,6 @@ export function Topbar() {
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/avatar.jpg" alt="User" />
                 <AvatarFallback className="text-sm font-bold" style={{ background: "#2DD4BF", color: "#0F1923" }}>
                   {initials}
                 </AvatarFallback>
