@@ -1,10 +1,14 @@
+"use client"
+
 import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { PaymentForm } from "@/components/Forms/PaymentForm"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreditCard, Coins, TrendingUp } from "lucide-react"
 import { goals, summaryStats } from "@/lib/mock-data"
+import { PaymentHistory } from "@/components/Dashboard/PaymentHistory"
 
 export default function PaymentsPage() {
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -85,6 +89,9 @@ export default function PaymentsPage() {
             </Card>
           </div>
         </div>
+
+        {/* Payment History - full width below */}
+        <PaymentHistory/>
       </div>
     </DashboardLayout>
   )
