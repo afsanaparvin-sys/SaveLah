@@ -30,14 +30,12 @@ export function PaymentHistory() {
             .split("; ")
             .find((c) => c.startsWith("auth_token="))
             ?.split("=")[1]
-      
-          console.log("1. Token:", token)  // is this undefined or a real token?
-      
+
           const res = await fetch(
             `https://personal-8wlttpq2.outsystemscloud.com/PaymentAtomicService/rest/PaymentAPI/GetPaymentByUserId`,
             {
-              headers: {
-                "Authorization": `Bearer ${token}`
+              headers: { 
+                "Authorization": token ?? ""  // no "Bearer " prefix
               }
             }
           )
