@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { PaymentForm } from "@/components/Forms/PaymentForm"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,11 +9,12 @@ import { goals, summaryStats } from "@/lib/mock-data"
 import { PaymentHistory } from "@/components/Dashboard/PaymentHistory"
 
 export default function PaymentsPage() {
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-SG", {
       style: "currency",
-      currency: "USD",
+      currency: "SGD",
     }).format(amount)
   }
 
@@ -32,7 +34,10 @@ export default function PaymentsPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Payment Form */}
           <div className="lg:col-span-2">
-            <PaymentForm goals={goals.map((g) => ({ id: g.id, title: g.title }))} />
+            <PaymentForm
+              goals={goals.map((g) => ({ id: g.id, title: g.title }))}
+              onPaymentSuccess={() => setRefreshKey(k => k + 1)}
+            />
           </div>
 
           {/* Stats Sidebar */}
@@ -91,7 +96,7 @@ export default function PaymentsPage() {
         </div>
 
         {/* Payment History - full width below */}
-        <PaymentHistory/>
+        <PaymentHistory key={refreshKey} />
       </div>
     </DashboardLayout>
   )

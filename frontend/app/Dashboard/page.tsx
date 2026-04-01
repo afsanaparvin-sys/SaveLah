@@ -38,7 +38,7 @@ export default function DashboardPage() {
         </div>
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2"><SavingsChart data={savingsChartData} /></div>
-          <div className="lg:col-span-1"><RecentActivity transactions={recentTransactions} /></div>
+          <div className="lg:col-span-1"><RecentActivity/></div>
         </div>
         <div>
           <h2 className="mb-4 text-xl font-semibold">Your Savings Goals</h2>

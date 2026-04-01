@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CreditCard, Coins } from "lucide-react"
+import { CreditCard, Coins, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import { getUserId } from "@/lib/auth"
 
 interface Goal {
   id: string
@@ -20,18 +21,21 @@ interface Goal {
 
 interface PaymentFormProps {
   goals: Goal[]
+  onPaymentSuccess?: () => void
 }
 
-export function PaymentForm({ goals }: PaymentFormProps) {
+export function PaymentForm({ goals, onPaymentSuccess }: PaymentFormProps) {
   const [merchantName, setMerchantName] = useState("")
   const [purchaseAmount, setPurchaseAmount] = useState("")
   const [selectedGoal, setSelectedGoal] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const roundUpData = useMemo(() => {
     const amount = parseFloat(purchaseAmount) || 0
     const roundedAmount = Math.ceil(amount)
     const roundUpSavings = roundedAmount - amount
-
     return {
       purchaseAmount: amount,
       roundedAmount,
@@ -39,20 +43,67 @@ export function PaymentForm({ goals }: PaymentFormProps) {
     }
   }, [purchaseAmount])
 
-  const handleSimulatePayment = () => {
-    // This would connect to OutSystems backend
-    console.log({
-      merchantName,
-      purchaseAmount: roundUpData.purchaseAmount,
-      roundUpSavings: roundUpData.roundUpSavings,
-      goalId: selectedGoal,
-    })
+  const handleSimulatePayment = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      setSuccess(false)
+
+      const userId = Number(getUserId())
+      const token = document.cookie
+        .split("; ")
+        .find((c) => c.startsWith("auth_token="))
+        ?.split("=")[1]
+
+      const res = await fetch(
+        "https://personal-39ukomme.outsystemscloud.com/PaymentGateway_CS/rest/PaymentGatewayAPI/ProcessMerchantPayment",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token ?? ""
+          },
+          body: JSON.stringify({
+            UserId: userId,
+            MerchantId: 1,
+            ItemAmount: roundUpData.purchaseAmount,
+            SavingsAmount: roundUpData.roundUpSavings,
+            Currency: "SGD",
+            GoalId: 1,
+            BankTransferId: "",
+            MonthlyTransfersId: 0
+          })
+        }
+      )
+
+      const raw = await res.text()
+      console.log("Raw response:", raw)
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      const data = JSON.parse(raw)
+
+      if (data.HasError) {
+        throw new Error(data.ErrorMessage || "Payment failed")
+      }
+
+      setSuccess(true)
+      setMerchantName("")
+      setPurchaseAmount("")
+      setSelectedGoal("")
+      onPaymentSuccess?.()
+
+    } catch (err: any) {
+      setError(err.message || "Payment failed. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-SG", {
       style: "currency",
-      currency: "USD",
+      currency: "SGD",
     }).format(amount)
   }
 
@@ -148,13 +199,36 @@ export function PaymentForm({ goals }: PaymentFormProps) {
         </Card>
       )}
 
+      {/* Success */}
+      {success && (
+        <div className="flex items-center gap-2 rounded-lg bg-green-50 p-4 text-green-700">
+          <CheckCircle className="h-4 w-4" />
+          <p className="text-sm font-medium">Payment simulated successfully!</p>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-4 text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
       <Button
         className="w-full"
         size="lg"
         onClick={handleSimulatePayment}
-        disabled={!merchantName || !purchaseAmount || !selectedGoal}
+        disabled={!merchantName || !purchaseAmount || !selectedGoal || loading}
       >
-        Simulate Payment
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          "Simulate Payment"
+        )}
       </Button>
     </div>
   )
