@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { PaymentForm } from "@/components/Forms/PaymentForm"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreditCard, Coins, TrendingUp } from "lucide-react"
-import { goals, summaryStats } from "@/lib/mock-data"
+import { summaryStats } from "@/lib/mock-data"  // removed goals import
 import { PaymentHistory } from "@/components/Dashboard/PaymentHistory"
 
 export default function PaymentsPage() {
@@ -35,7 +35,6 @@ export default function PaymentsPage() {
           {/* Payment Form */}
           <div className="lg:col-span-2">
             <PaymentForm
-              goals={goals.map((g) => ({ id: g.id, title: g.title }))}
               onPaymentSuccess={() => setRefreshKey(k => k + 1)}
             />
           </div>

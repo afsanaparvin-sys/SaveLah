@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,22 +15,68 @@ import { CreditCard, Coins, CheckCircle, AlertCircle, Loader2 } from "lucide-rea
 import { getUserId } from "@/lib/auth"
 
 interface Goal {
-  id: string
-  title: string
+  Id: number
+  OwnerId: number
+  Title: string
+  Description: string
+  TargetAmount: number
+  CurrentAmount: number
+  Currency: string
+  Deadline: string
+  Status: number
+  CreatedAt: string
+  UpdatedAt: string
+  WithdrawalType: number
 }
 
 interface PaymentFormProps {
-  goals: Goal[]
   onPaymentSuccess?: () => void
 }
 
-export function PaymentForm({ goals, onPaymentSuccess }: PaymentFormProps) {
+export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
   const [merchantName, setMerchantName] = useState("")
   const [purchaseAmount, setPurchaseAmount] = useState("")
   const [selectedGoal, setSelectedGoal] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [goalsLoading, setGoalsLoading] = useState(true)
+
+  // Fetch goals on mount, filter by current user
+  useEffect(() => {
+    const fetchGoals = async () => {
+      try {
+        const token = document.cookie
+          .split("; ")
+          .find((c) => c.startsWith("auth_token="))
+          ?.split("=")[1]
+
+        const res = await fetch(
+          "https://personal-ntek2wae.outsystemscloud.com/GoalAtomicService/rest/Goal/GetAllGoals",
+          {
+            headers: { "Authorization": token ?? "" }
+          }
+        )
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+        const data: Goal[] = await res.json()
+        const userId = Number(getUserId())
+
+        // filter to only this user's goals
+        const userGoals = data.filter((g) => g.OwnerId === userId)
+        setGoals(userGoals)
+      } catch (err) {
+        console.error("Failed to fetch goals:", err)
+      } finally {
+        setGoalsLoading(false)
+      }
+    }
+
+    fetchGoals()
+  }, [])
 
   const roundUpData = useMemo(() => {
     const amount = parseFloat(purchaseAmount) || 0
@@ -69,7 +115,7 @@ export function PaymentForm({ goals, onPaymentSuccess }: PaymentFormProps) {
             ItemAmount: roundUpData.purchaseAmount,
             SavingsAmount: roundUpData.roundUpSavings,
             Currency: "SGD",
-            GoalId: 1,
+            GoalId: Number(selectedGoal), // now uses actual selected goal
             BankTransferId: "",
             MonthlyTransfersId: 0
           })
@@ -147,12 +193,15 @@ export function PaymentForm({ goals, onPaymentSuccess }: PaymentFormProps) {
             <label className="text-sm font-medium">Savings Goal</label>
             <Select value={selectedGoal} onValueChange={setSelectedGoal}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a goal" />
+                <SelectValue placeholder={goalsLoading ? "Loading goals..." : "Select a goal"} />
               </SelectTrigger>
               <SelectContent>
+                {goals.length === 0 && !goalsLoading && (
+                  <SelectItem value="none" disabled>No goals found</SelectItem>
+                )}
                 {goals.map((goal) => (
-                  <SelectItem key={goal.id} value={goal.id}>
-                    {goal.title}
+                  <SelectItem key={goal.Id} value={String(goal.Id)}>
+                    {goal.Title}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -219,7 +268,7 @@ export function PaymentForm({ goals, onPaymentSuccess }: PaymentFormProps) {
         className="w-full"
         size="lg"
         onClick={handleSimulatePayment}
-        disabled={!merchantName || !purchaseAmount || !selectedGoal || loading}
+        disabled={!merchantName || !purchaseAmount || !selectedGoal || loading || goalsLoading}
       >
         {loading ? (
           <>
