@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { TransactionTable } from "@/components/Dashboard/TransactionTable"
+import type { Transaction } from "@/components/Dashboard/TransactionTable"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -12,61 +13,132 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Activity, ArrowDownRight, ArrowUpRight, Coins, RefreshCw, Search } from "lucide-react"
-import { goals, recentTransactions } from "@/lib/mock-data"
+import { Activity, ArrowDownRight, ArrowUpRight, Coins, RefreshCw, Search, Loader2, AlertCircle } from "lucide-react"
+import { getUserId } from "@/lib/auth"
+
+interface LedgerTransaction {
+  LedgerId: number
+  UserId: number
+  GoalId: number
+  Type: number
+  Amount: number
+  Currency: string
+  MonthlyTransfersId: number
+  PaymentId: number
+  BankTransferId: number
+  CreatedOn: string
+}
+
+// map integer enum to Transaction type string
+const typeMap: Record<number, Transaction["type"]> = {
+  1: "deposit",
+  2: "round-up",
+  3: "deposit",   // MonthlyDeposit → deposit
+  4: "deposit",   // WeeklyDeposit → deposit
+  5: "withdrawal",
+}
+
+const typeLabelMap: Record<number, string> = {
+  1: "Payment Deposit",
+  2: "Round-Up",
+  3: "Monthly Deposit",
+  4: "Weekly Deposit",
+  5: "Withdrawal",
+}
 
 export default function ActivityPage() {
+  const [rawTransactions, setRawTransactions] = useState<LedgerTransaction[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   const [goalFilter, setGoalFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [monthFilter, setMonthFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
 
-  const filteredTransactions = useMemo(() => {
-    return recentTransactions.filter((transaction) => {
-      const matchesGoal =
-        goalFilter === "all" || transaction.goalName === goalFilter
-      const matchesType =
-        typeFilter === "all" || transaction.type === typeFilter
-      const matchesSearch =
-        searchQuery === "" ||
-        transaction.goalName.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesMonth =
-        monthFilter === "all" ||
-        new Date(transaction.date).toLocaleString("default", { month: "long", year: "numeric" }) === monthFilter
+  useEffect(() => {
+    const fetchLedger = async () => {
+      try {
+        setLoading(true)
+        setError(null)
 
-      return matchesGoal && matchesType && matchesSearch && matchesMonth
-    })
-  }, [goalFilter, typeFilter, searchQuery, monthFilter])
+        const userId = getUserId()
+        const token = document.cookie
+          .split("; ")
+          .find((c) => c.startsWith("auth_token="))
+          ?.split("=")[1]
 
-  const transactionStats = useMemo(() => {
-    const deposits = recentTransactions
-      .filter((t) => t.type === "deposit")
-      .reduce((acc, t) => acc + t.amount, 0)
-    const withdrawals = recentTransactions
-      .filter((t) => t.type === "withdrawal")
-      .reduce((acc, t) => acc + t.amount, 0)
-    const roundUps = recentTransactions
-      .filter((t) => t.type === "round-up")
-      .reduce((acc, t) => acc + t.amount, 0)
-    const transfers = recentTransactions
-      .filter((t) => t.type === "transfer")
-      .reduce((acc, t) => acc + t.amount, 0)
+        const res = await fetch(
+          `https://personal-s6qgwhkb.outsystemscloud.com/DBEALedger/rest/LedgerNew/GetLedgerTransactionsByUserId?UserId=${userId}`,
+          {
+            headers: { "Authorization": token ?? "" }
+          }
+        )
 
-    return { deposits, withdrawals, roundUps, transfers }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+        const data: LedgerTransaction[] = await res.json()
+        setRawTransactions(data)
+      } catch (err) {
+        setError("Failed to load transactions.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLedger()
   }, [])
 
+  // map ledger data to Transaction shape for TransactionTable
+  const transactions: Transaction[] = rawTransactions.map((tx) => ({
+    id: String(tx.LedgerId),
+    type: typeMap[tx.Type] ?? "transfer",
+    goalName: `Goal #${tx.GoalId}`,
+    amount: tx.Amount,
+    currency: tx.Currency || "SGD",
+    date: tx.CreatedOn ?? new Date().toISOString(),
+    user: undefined,
+  }))
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((t) => {
+      const matchesGoal = goalFilter === "all" || t.goalName === goalFilter
+      const matchesType = typeFilter === "all" || t.type === typeFilter
+      const matchesSearch =
+        searchQuery === "" ||
+        t.goalName.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesMonth =
+        monthFilter === "all" ||
+        new Date(t.date).toLocaleString("default", { month: "long", year: "numeric" }) === monthFilter
+      return matchesGoal && matchesType && matchesSearch && matchesMonth
+    })
+  }, [transactions, goalFilter, typeFilter, searchQuery, monthFilter])
+
+  const transactionStats = useMemo(() => {
+    const deposits = rawTransactions
+      .filter((t) => [1, 3, 4].includes(t.Type))
+      .reduce((acc, t) => acc + t.Amount, 0)
+    const withdrawals = rawTransactions
+      .filter((t) => t.Type === 5)
+      .reduce((acc, t) => acc + t.Amount, 0)
+    const roundUps = rawTransactions
+      .filter((t) => t.Type === 2)
+      .reduce((acc, t) => acc + t.Amount, 0)
+
+    return { deposits, withdrawals, roundUps }
+  }, [rawTransactions])
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-SG", {
       style: "currency",
-      currency: "USD",
+      currency: "SGD",
     }).format(amount)
   }
 
-  const uniqueGoals = [...new Set(recentTransactions.map((t) => t.goalName))]
-
+  const uniqueGoals = [...new Set(transactions.map((t) => t.goalName))]
   const uniqueMonths = [
     ...new Set(
-      recentTransactions.map((t) =>
+      transactions.map((t) =>
         new Date(t.date).toLocaleString("default", { month: "long", year: "numeric" })
       )
     ),
@@ -84,7 +156,7 @@ export default function ActivityPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-0 shadow-sm">
             <CardContent className="flex items-center gap-4 p-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
@@ -124,22 +196,9 @@ export default function ActivityPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <RefreshCw className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Transfers</p>
-                <p className="text-xl font-bold">
-                  +{formatCurrency(transactionStats.transfers)}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Filters */}
+        {/* Filters + Table */}
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -165,9 +224,7 @@ export default function ActivityPage() {
                 <SelectContent>
                   <SelectItem value="all">All Months</SelectItem>
                   {uniqueMonths.map((month) => (
-                    <SelectItem key={month} value={month}>
-                      {month}
-                    </SelectItem>
+                    <SelectItem key={month} value={month}>{month}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -178,9 +235,7 @@ export default function ActivityPage() {
                 <SelectContent>
                   <SelectItem value="all">All Goals</SelectItem>
                   {uniqueGoals.map((goal) => (
-                    <SelectItem key={goal} value={goal}>
-                      {goal}
-                    </SelectItem>
+                    <SelectItem key={goal} value={goal}>{goal}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -193,17 +248,34 @@ export default function ActivityPage() {
                   <SelectItem value="deposit">Deposits</SelectItem>
                   <SelectItem value="withdrawal">Withdrawals</SelectItem>
                   <SelectItem value="round-up">Round-Ups</SelectItem>
-                  <SelectItem value="transfer">Transfers</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <TransactionTable
-              transactions={filteredTransactions}
-              showUser={true}
-            />
+            {/* Loading */}
+            {loading && (
+              <div className="flex items-center justify-center py-10 text-muted-foreground">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading transactions...
+              </div>
+            )}
 
-            {filteredTransactions.length === 0 && (
+            {/* Error */}
+            {!loading && error && (
+              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-4 text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* Table */}
+            {!loading && !error && (
+              <TransactionTable
+                transactions={filteredTransactions}
+                showUser={false}
+              />
+            )}
+
+            {!loading && !error && filteredTransactions.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Activity className="h-12 w-12 text-muted-foreground/50" />
                 <p className="mt-2 font-medium">No transactions found</p>
