@@ -29,6 +29,8 @@ interface Goal {
   WithdrawalType: number
 }
 
+type RoundMode = 'cent' | 'dollar' | '5' | '10' | 'custom'
+
 interface PaymentFormProps {
   onPaymentSuccess?: () => void
 }
@@ -37,14 +39,14 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
   const [merchantName, setMerchantName] = useState("")
   const [purchaseAmount, setPurchaseAmount] = useState("")
   const [selectedGoal, setSelectedGoal] = useState("")
+  const [roundMode, setRoundMode] = useState<RoundMode>('cent')
+  const [customAmount, setCustomAmount] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const [goals, setGoals] = useState<Goal[]>([])
   const [goalsLoading, setGoalsLoading] = useState(true)
 
-  // Fetch goals on mount, filter by current user
   useEffect(() => {
     const fetchGoals = async () => {
       try {
@@ -52,42 +54,56 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
           .split("; ")
           .find((c) => c.startsWith("auth_token="))
           ?.split("=")[1]
-
         const res = await fetch(
           "https://personal-ntek2wae.outsystemscloud.com/GoalAtomicService/rest/Goal/GetAllGoals",
-          {
-            headers: { "Authorization": token ?? "" }
-          }
+          { headers: { Authorization: token ?? "" } }
         )
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
         const data: Goal[] = await res.json()
         const userId = Number(getUserId())
-
-        // filter to only this user's goals
-        const userGoals = data.filter((g) => g.OwnerId === userId)
-        setGoals(userGoals)
+        setGoals(data.filter((g) => g.OwnerId === userId))
       } catch (err) {
         console.error("Failed to fetch goals:", err)
       } finally {
         setGoalsLoading(false)
       }
     }
-
     fetchGoals()
   }, [])
 
   const roundUpData = useMemo(() => {
     const amount = parseFloat(purchaseAmount) || 0
-    const roundedAmount = Math.ceil(amount)
-    const roundUpSavings = roundedAmount - amount
+    if (amount <= 0) return { purchaseAmount: 0, roundedAmount: 0, roundUpSavings: 0 }
+
+    let rounded: number
+    if (roundMode === 'cent') rounded = Math.ceil(amount * 100) / 100
+    else if (roundMode === 'dollar') rounded = Math.ceil(amount)
+    else if (roundMode === '5') rounded = Math.ceil(amount / 5) * 5
+    else if (roundMode === '10') rounded = Math.ceil(amount / 10) * 10
+    else rounded = amount + (parseFloat(customAmount) || 0)
+
     return {
       purchaseAmount: amount,
-      roundedAmount,
-      roundUpSavings: Math.round(roundUpSavings * 100) / 100,
+      roundedAmount: Math.round(rounded * 100) / 100,
+      roundUpSavings: Math.round((rounded - amount) * 100) / 100,
     }
-  }, [purchaseAmount])
+  }, [purchaseAmount, roundMode, customAmount])
+
+  const roundModeLabel = (m: RoundMode) => {
+    if (m === 'cent') return 'Nearest cent'
+    if (m === 'dollar') return 'Nearest dollar'
+    if (m === '5') return 'Nearest $5'
+    if (m === '10') return 'Nearest $10'
+    return 'Custom amount'
+  }
+
+  const roundModeDesc = (m: RoundMode) => {
+    if (m === 'cent') return 'Rounds up to the nearest cent'
+    if (m === 'dollar') return 'Rounds up to the nearest whole dollar'
+    if (m === '5') return 'Rounds up to the nearest $5'
+    if (m === '10') return 'Rounds up to the nearest $10'
+    return `Saves a fixed SGD ${parseFloat(customAmount || '0').toFixed(2)} per transaction`
+  }
 
   const handleSimulatePayment = async () => {
     try {
@@ -107,7 +123,7 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": token ?? ""
+            Authorization: token ?? "",
           },
           body: JSON.stringify({
             UserId: userId,
@@ -115,30 +131,27 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
             ItemAmount: roundUpData.purchaseAmount,
             SavingsAmount: roundUpData.roundUpSavings,
             Currency: "SGD",
-            GoalId: Number(selectedGoal), // now uses actual selected goal
+            GoalId: Number(selectedGoal),
             BankTransferId: "",
-            MonthlyTransfersId: 0
-          })
+            MonthlyTransfersId: 0,
+          }),
         }
       )
 
       const raw = await res.text()
       console.log("Raw response:", raw)
-
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
       const data = JSON.parse(raw)
-
-      if (data.HasError) {
-        throw new Error(data.ErrorMessage || "Payment failed")
-      }
+      if (data.HasError) throw new Error(data.ErrorMessage || "Payment failed")
 
       setSuccess(true)
       setMerchantName("")
       setPurchaseAmount("")
       setSelectedGoal("")
+      setCustomAmount("")
+      setRoundMode('cent')
       onPaymentSuccess?.()
-
     } catch (err: any) {
       setError(err.message || "Payment failed. Please try again.")
     } finally {
@@ -146,12 +159,19 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-SG", {
-      style: "currency",
-      currency: "SGD",
-    }).format(amount)
-  }
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(amount)
+
+  const roundModes: RoundMode[] = ['cent', 'dollar', '5', '10', 'custom']
+
+  const isDisabled =
+    !merchantName ||
+    !purchaseAmount ||
+    !selectedGoal ||
+    loading ||
+    goalsLoading ||
+    roundUpData.roundUpSavings <= 0 ||
+    (roundMode === 'custom' && !customAmount)
 
   return (
     <div className="space-y-6">
@@ -173,11 +193,9 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Purchase Amount</label>
+            <label className="text-sm font-medium">Purchase Amount (SGD)</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
               <Input
                 type="number"
                 step="0.01"
@@ -187,6 +205,35 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
                 onChange={(e) => setPurchaseAmount(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Round-up mode</label>
+            <div className="flex flex-wrap gap-2">
+              {roundModes.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setRoundMode(m)}
+                  className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                    roundMode === m
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {roundModeLabel(m)}
+                </button>
+              ))}
+            </div>
+            {roundMode === 'custom' && (
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Fixed save amount e.g. 2.50"
+                value={customAmount}
+                onChange={(e) => setCustomAmount(e.target.value)}
+              />
+            )}
           </div>
 
           <div className="space-y-2">
@@ -210,8 +257,7 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
         </CardContent>
       </Card>
 
-      {/* Round-Up Preview */}
-      {roundUpData.purchaseAmount > 0 && (
+      {roundUpData.purchaseAmount > 0 && roundUpData.roundUpSavings >= 0 && (
         <Card className="border-0 bg-gradient-to-br from-primary/5 to-accent/5 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -222,33 +268,27 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Purchase Amount</span>
-                <span className="font-medium">
-                  {formatCurrency(roundUpData.purchaseAmount)}
-                </span>
+                <span className="text-muted-foreground">Purchase amount</span>
+                <span className="font-medium">{formatCurrency(roundUpData.purchaseAmount)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Rounded Amount</span>
-                <span className="font-medium">
-                  {formatCurrency(roundUpData.roundedAmount)}
-                </span>
+                <span className="text-muted-foreground">Rounded to</span>
+                <span className="font-medium">{formatCurrency(roundUpData.roundedAmount)}</span>
               </div>
               <div className="border-t pt-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-primary">
-                    Round-Up Savings
-                  </span>
+                  <span className="font-semibold text-primary">Round-up savings</span>
                   <span className="text-xl font-bold text-success">
                     +{formatCurrency(roundUpData.roundUpSavings)}
                   </span>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground">{roundModeDesc(roundMode)}</p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Success */}
       {success && (
         <div className="flex items-center gap-2 rounded-lg bg-green-50 p-4 text-green-700">
           <CheckCircle className="h-4 w-4" />
@@ -256,7 +296,6 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-4 text-destructive">
           <AlertCircle className="h-4 w-4" />
@@ -268,7 +307,7 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
         className="w-full"
         size="lg"
         onClick={handleSimulatePayment}
-        disabled={!merchantName || !purchaseAmount || !selectedGoal || loading || goalsLoading}
+        disabled={isDisabled}
       >
         {loading ? (
           <>
