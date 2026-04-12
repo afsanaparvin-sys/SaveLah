@@ -12,24 +12,25 @@ interface LedgerTransaction {
   LedgerId: number
   UserId: number
   GoalId: number
-  Type: number        // integer enum
+  Type: string        // ← was number, now string
   Amount: number
   Currency: string
   MonthlyTransfersId: number
   PaymentId: number
-  BankTransferId: number
+  BankTransferId: string  // ← was number, now string
   CreatedOn: string
 }
 
-const typeConfig: Record<number, { label: string; icon: any; color: string }> = {
-  1: { label: "Payment Deposit",  icon: ArrowDownRight, color: "bg-success/10 text-success" },
-  2: { label: "Round-Up",         icon: Coins,          color: "bg-accent/10 text-accent" },
-  3: { label: "Monthly Deposit",  icon: Calendar,       color: "bg-primary/10 text-primary" },
-  4: { label: "Weekly Deposit",   icon: RefreshCw,      color: "bg-primary/10 text-primary" },
-  5: { label: "Withdrawal",       icon: ArrowUpRight,   color: "bg-destructive/10 text-destructive" },
+
+const typeConfig: Record<string, { label: string; icon: any; color: string }> = {
+  "1": { label: "Payment Deposit", icon: ArrowDownRight, color: "bg-success/10 text-success" },
+  "2": { label: "Round-Up",        icon: Coins,          color: "bg-accent/10 text-accent" },
+  "3": { label: "Monthly Deposit", icon: Calendar,       color: "bg-primary/10 text-primary" },
+  "4": { label: "Weekly Deposit",  icon: RefreshCw,      color: "bg-primary/10 text-primary" },
+  "5": { label: "Withdrawal",      icon: ArrowUpRight,   color: "bg-destructive/10 text-destructive" },
 }
 
-const getConfig = (type: number) =>
+const getConfig = (type: string) =>
   typeConfig[type] ?? { label: "Unknown", icon: RefreshCw, color: "bg-primary/10 text-primary" }
 
 export function RecentActivity() {
@@ -126,7 +127,7 @@ export function RecentActivity() {
         {!loading && !error && transactions.map((tx) => {
           const config = getConfig(tx.Type)
           const Icon = config.icon
-          const isNegative = tx.Type === 5
+          const isNegative = tx.Type === "5" 
 
           return (
             <div

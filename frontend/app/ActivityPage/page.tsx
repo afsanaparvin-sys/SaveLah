@@ -20,30 +20,22 @@ interface LedgerTransaction {
   LedgerId: number
   UserId: number
   GoalId: number
-  Type: number
+  Type: string 
   Amount: number
   Currency: string
   MonthlyTransfersId: number
   PaymentId: number
-  BankTransferId: number
-  CreatedOn: string
+  BankTransferId: string  
+  CreatedOn: string 
 }
 
 // map integer enum to Transaction type string
-const typeMap: Record<number, Transaction["type"]> = {
-  1: "deposit",
-  2: "round-up",
-  3: "deposit",   // MonthlyDeposit → deposit
-  4: "deposit",   // WeeklyDeposit → deposit
-  5: "withdrawal",
-}
-
-const typeLabelMap: Record<number, string> = {
-  1: "Payment Deposit",
-  2: "Round-Up",
-  3: "Monthly Deposit",
-  4: "Weekly Deposit",
-  5: "Withdrawal",
+const typeMap: Record<string, Transaction["type"]> = {
+  "1": "deposit",    // MerchantPayment
+  "2": "round-up",   // RoundingDeposit
+  "3": "deposit",    // MonthlyDeposit
+  "4": "deposit",    // WeeklyDeposit
+  "5": "withdrawal", // Withdrawal
 }
 
 export default function ActivityPage() {
@@ -116,15 +108,15 @@ export default function ActivityPage() {
 
   const transactionStats = useMemo(() => {
     const deposits = rawTransactions
-      .filter((t) => [1, 3, 4].includes(t.Type))
+      .filter((t) => ["1", "3", "4"].includes(t.Type))
       .reduce((acc, t) => acc + t.Amount, 0)
     const withdrawals = rawTransactions
-      .filter((t) => t.Type === 5)
+      .filter((t) => t.Type === "5")
       .reduce((acc, t) => acc + t.Amount, 0)
     const roundUps = rawTransactions
-      .filter((t) => t.Type === 2)
+      .filter((t) => t.Type === "2")
       .reduce((acc, t) => acc + t.Amount, 0)
-
+  
     return { deposits, withdrawals, roundUps }
   }, [rawTransactions])
 
