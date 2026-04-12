@@ -11,7 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { RefreshCw, Plus } from "lucide-react"
+import { RefreshCw, Plus, Loader2 } from "lucide-react"
+import { createAutoTransfer } from "@/lib/api"
+import { toast } from "sonner"
 
 interface Goal {
   id: string
@@ -20,24 +22,29 @@ interface Goal {
 
 interface AutoTransferFormProps {
   goals: Goal[]
+  onTransferCreated?: () => void
 }
 
-export function AutoTransferForm({ goals }: AutoTransferFormProps) {
+export function AutoTransferForm({ goals, onTransferCreated }: AutoTransferFormProps) {
   const [selectedGoal, setSelectedGoal] = useState("")
   const [transferAmount, setTransferAmount] = useState("")
   const [frequency, setFrequency] = useState("")
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = () => {
-    if (selectedGoal && transferAmount && frequency) {
-      console.log("Create transfer:", {
-        goalId: selectedGoal,
-        amount: parseFloat(transferAmount),
-        frequency,
-      })
-      // This would connect to OutSystems backend
+  const handleSubmit = async () => {
+    if (!selectedGoal || !transferAmount || !frequency) return
+    setLoading(true)
+    try {
+      await createAutoTransfer(Number(selectedGoal), parseFloat(transferAmount), frequency)
+      toast.success("Auto transfer created successfully!")
       setSelectedGoal("")
       setTransferAmount("")
       setFrequency("")
+      onTransferCreated?.()
+    } catch {
+      toast.error("Failed to create transfer. Please try again.")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -73,8 +80,8 @@ export function AutoTransferForm({ goals }: AutoTransferFormProps) {
               <SelectValue placeholder="How often?" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="Weekly">Weekly</SelectItem>
+              <SelectItem value="Monthly">Monthly</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -99,10 +106,10 @@ export function AutoTransferForm({ goals }: AutoTransferFormProps) {
         <Button
           className="w-full gap-2"
           onClick={handleSubmit}
-          disabled={!selectedGoal || !transferAmount || !frequency}
+          disabled={!selectedGoal || !transferAmount || !frequency || loading}
         >
-          <RefreshCw className="h-4 w-4" />
-          Set Up Transfer
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {loading ? "Creating..." : "Set Up Transfer"}
         </Button>
       </CardContent>
     </Card>

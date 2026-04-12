@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react"
 import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { SummaryStatCard } from "@/components/Dashboard/SummaryStatCard"
-import { GoalCard } from "@/components/Dashboard/GoalCard"
 import { SavingsChart } from "@/components/Dashboard/SavingsChart"
 import { RecentActivity } from "@/components/Dashboard/RecentActivity"
 import { Wallet, Target, RefreshCw, Coins } from "lucide-react"
-import { goals } from "@/lib/mock-data"
 import { getSavingsGrowth, getKPICardDetails, type KPICardData } from "@/lib/api"
 
 // TODO: REMOVE — test data only
@@ -124,14 +122,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-1"><RecentActivity /></div>
         </div>
 
-        <div>
-          <h2 className="mb-4 text-xl font-semibold">Your Savings Goals</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {goals.map((goal) => (
-              <GoalCard key={goal.id} id={goal.id} title={goal.title} description={goal.description} currentAmount={goal.currentAmount} targetAmount={goal.targetAmount} deadline={goal.deadline} currency={goal.currency} />
-            ))}
-          </div>
-        </div>
+
       </div>
     </DashboardLayout>
   )

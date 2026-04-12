@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { CreditCard, Coins, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { getUserId } from "@/lib/auth"
-import { getAllGoals, processPayment, type SavingsGoal } from "@/lib/api"
+import { getGoalsByCurrentUser, processPayment, type SavingsGoal } from "@/lib/api"
 
 type RoundMode = 'cent' | 'dollar' | '5' | '10' | 'custom'
 
@@ -36,9 +36,8 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
   useEffect(() => {
     const fetchGoals = async () => {
       try {
-        const userId = Number(getUserId())
-        const data = await getAllGoals()
-        setGoals(data.filter((g) => g.OwnerId === userId))
+        const data = await getGoalsByCurrentUser()
+        setGoals(data)
       } catch (err) {
         console.error("Failed to fetch goals:", err)
       } finally {

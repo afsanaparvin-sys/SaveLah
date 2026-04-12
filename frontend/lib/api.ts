@@ -3,6 +3,7 @@ const PROFILE_BASE_URL = "https://ypw.outsystemscloud.com/UserProfile/rest/UserP
 const DASHBOARD_BASE_URL = "https://ypw.outsystemscloud.com/Dashboard/rest/Dashboard";
 const GOAL_BASE_URL = "https://personal-fhcnbshw.outsystemscloud.com/ManageGoalComposite/rest/ManageGoal";
 const GOAL_ATOMIC_BASE_URL = "https://personal-ntek2wae.outsystemscloud.com/GoalAtomicService/rest/Goal";
+const TRANSFERS_BASE_URL = "https://personal-6fyixfa7.outsystemscloud.com/AutomaticTransferServiceModule/rest/AutomaticTransfersAPI";
 
 const LEDGER_BASE_URL = "https://personal-s6qgwhkb.outsystemscloud.com/DBEALedger/rest/LedgerNew";
 const PAYMENT_BASE_URL = "https://personal-8wlttpq2.outsystemscloud.com/PaymentAtomicService/rest/PaymentAPI";
@@ -61,7 +62,7 @@ export async function getSavingsGrowth(): Promise<Array<{ month: string; savings
   if (!res.ok) throw new Error("Failed to fetch savings growth.");
   const data = await res.json();
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return data.MonthlyValueRecordList.map((item: { Month: number; Value: number }) => ({
+  return (data.MonthlyValueRecordList ?? []).map((item: { Month: number; Value: number }) => ({
     month: months[item.Month - 1] ?? String(item.Month),
     savings: item.Value,
   }));
@@ -91,7 +92,7 @@ export interface SavingsGoal {
   Title: string
   Description: string
   TargetAmount: number
-  CurrentAmount: number
+  CurrentAmount?: number
   Currency: string
   Deadline: string
   Status: number
@@ -287,7 +288,8 @@ export async function getLedgerByUserId(userId: number): Promise<LedgerTransacti
     headers: { Authorization: getAuthToken() },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const data: LedgerTransaction[] = await res.json();
+  return data.filter((tx) => tx.LedgerId !== 0);
 }
 
 export async function getAllGoals(): Promise<SavingsGoal[]> {
@@ -296,6 +298,55 @@ export async function getAllGoals(): Promise<SavingsGoal[]> {
   });
   if (!res.ok) throw new Error("Failed to fetch goals.");
   return res.json();
+}
+
+export async function getGoalsByCurrentUser(): Promise<SavingsGoal[]> {
+  const res = await fetch(`${GOAL_ATOMIC_BASE_URL}/GetGoalsByCurrentUserId`, {
+    headers: { Authorization: getAuthToken() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch goals.");
+  return res.json();
+}
+
+export interface AutoTransfer {
+  MonthlyId: number
+  UserId: number
+  GoalId: number
+  TransferAmount: number
+  Frequency: string
+}
+
+export async function getCurrentUserTransfers(): Promise<AutoTransfer[]> {
+  const res = await fetch(`${TRANSFERS_BASE_URL}/GetCurrentUserTransfers`, {
+    headers: { Authorization: getAuthToken() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch transfers.");
+  return res.json();
+}
+
+export async function createAutoTransfer(goalId: number, transferAmount: number, frequency: string): Promise<void> {
+  const res = await fetch(`${TRANSFERS_BASE_URL}/automatictransfers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: getAuthToken() },
+    body: JSON.stringify({ GoalId: goalId, TransferAmount: transferAmount, Frequency: frequency }),
+  });
+  if (!res.ok) throw new Error("Failed to create transfer.");
+}
+
+export async function deleteAutoTransfer(monthlyId: number): Promise<void> {
+  const res = await fetch(`${TRANSFERS_BASE_URL}/automatictransfers/${monthlyId}`, {
+    method: "DELETE",
+    headers: { Authorization: getAuthToken() },
+  });
+  if (!res.ok) throw new Error("Failed to delete transfer.");
+}
+
+export async function triggerAutomaticTransfer(): Promise<void> {
+  const res = await fetch(
+    "https://personal-ntek2wae.outsystemscloud.com/SavingsScheduling/rest/CallAutomaticTransfer/TriggerAutomaticTransfer",
+    { method: "POST", headers: { "Content-Type": "application/json", Authorization: getAuthToken() } }
+  );
+  if (!res.ok) throw new Error("Failed to trigger transfer.");
 }
 
 export async function loginUser(email: string, password: string): Promise<string> {

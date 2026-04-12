@@ -68,7 +68,7 @@ export function CreateGoalModal({
     title: "",
     description: "",
     targetAmount: "",
-    currency: "USD",
+    currency: "SGD",
     deadline: "",
     withdrawalType: "1",
   })
@@ -81,7 +81,7 @@ export function CreateGoalModal({
   // Reset form and initialise owner row every time modal opens
   useEffect(() => {
     if (!open) return
-    setFormData({ title: "", description: "", targetAmount: "", currency: "USD", deadline: "", withdrawalType: "1" })
+    setFormData({ title: "", description: "", targetAmount: "", currency: "SGD", deadline: "", withdrawalType: "1" })
     setEmailInput("")
     setEmailError("")
     setContributors([{

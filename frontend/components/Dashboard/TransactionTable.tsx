@@ -14,7 +14,7 @@ import { ArrowUpRight, ArrowDownRight, RefreshCw, Coins } from "lucide-react"
 
 export interface Transaction {
   id: string
-  type: "deposit" | "withdrawal" | "round-up" | "transfer"
+  type: "deposit" | "withdrawal" | "round-up" | "transfer" | "monthly-deposit" | "weekly-deposit"
   goalName: string
   amount: number
   currency: string
@@ -30,7 +30,7 @@ interface TransactionTableProps {
 
 const typeConfig = {
   deposit: {
-    label: "Deposit",
+    label: "Direct Deposit",
     icon: ArrowDownRight,
     color: "bg-success/10 text-success",
   },
@@ -48,6 +48,16 @@ const typeConfig = {
     label: "Transfer",
     icon: RefreshCw,
     color: "bg-primary/10 text-primary",
+  },
+  "monthly-deposit": {
+    label: "Monthly Deposit",
+    icon: ArrowDownRight,
+    color: "bg-success/10 text-success",
+  },
+  "weekly-deposit": {
+    label: "Weekly Deposit",
+    icon: ArrowDownRight,
+    color: "bg-success/10 text-success",
   },
 }
 

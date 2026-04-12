@@ -21,8 +21,8 @@ import { getUserId } from "@/lib/auth"
 const typeMap: Record<string, Transaction["type"]> = {
   "1": "deposit",    // MerchantPayment
   "2": "round-up",   // RoundingDeposit
-  "3": "deposit",    // MonthlyDeposit
-  "4": "deposit",    // WeeklyDeposit
+  "3": "monthly-deposit", // MonthlyDeposit
+  "4": "weekly-deposit",   // WeeklyDeposit
   "5": "withdrawal", // Withdrawal
 }
 
@@ -210,7 +210,9 @@ export default function ActivityPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="deposit">Deposits</SelectItem>
+                  <SelectItem value="deposit">Direct Deposits</SelectItem>
+                  <SelectItem value="monthly-deposit">Monthly Deposits</SelectItem>
+                  <SelectItem value="weekly-deposit">Weekly Deposits</SelectItem>
                   <SelectItem value="withdrawal">Withdrawals</SelectItem>
                   <SelectItem value="round-up">Round-Ups</SelectItem>
                 </SelectContent>

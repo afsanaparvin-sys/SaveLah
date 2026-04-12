@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, Search, ChevronDown, User, LogOut, ShoppingBag } from "lucide-react"
+import { Search, ChevronDown, User, LogOut, ShoppingBag } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { getUserName } from "@/lib/auth"
@@ -16,7 +16,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export function Topbar() {
-  const [hasNotifications] = useState(true)
   const router = useRouter()
   const [name, setName] = useState("")
 
@@ -81,22 +80,6 @@ export function Topbar() {
           title="Try merchant simulator"
         >
           <ShoppingBag style={{ width: 15, height: 15 }} />
-        </button>
-
-        {/* Notifications */}
-        <button
-          className="relative flex items-center justify-center rounded-lg transition-colors"
-          style={{ width: 38, height: 38, background: "transparent", border: "none", cursor: "pointer" }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#F4F6F8")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-        >
-          <Bell className="h-5 w-5" style={{ color: "#6B7F8E" }} />
-          {hasNotifications && (
-            <span
-              className="absolute right-2 top-2 h-2 w-2 rounded-full"
-              style={{ background: "#EF4444" }}
-            />
-          )}
         </button>
 
         {/* User menu */}

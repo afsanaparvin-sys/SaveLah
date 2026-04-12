@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/Layout/DashboardLayout"
-import { GoalsTable } from "@/components/Goals/GoalsTable"
+import { GoalCard } from "@/components/Dashboard/GoalCard"
 import { CreateGoalModal } from "@/components/Goals/CreateGoalModal"
 import { Button } from "@/components/ui/button"
 import { Plus, Target } from "lucide-react"
@@ -148,7 +148,21 @@ export default function GoalsPage() {
             <p className="text-sm text-muted-foreground">Create your first savings goal to get started.</p>
           </div>
         ) : (
-          <GoalsTable goals={goalsList} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {goalsList.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                id={goal.id}
+                title={goal.title}
+                description={goal.description}
+                currentAmount={goal.currentAmount}
+                targetAmount={goal.targetAmount}
+                deadline={goal.deadline}
+                currency={goal.currency}
+                status={goal.status}
+              />
+            ))}
+          </div>
         )}
 
         {/* Create Goal Modal */}
