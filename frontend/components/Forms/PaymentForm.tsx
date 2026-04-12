@@ -13,21 +13,7 @@ import {
 } from "@/components/ui/select"
 import { CreditCard, Coins, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { getUserId } from "@/lib/auth"
-
-interface Goal {
-  Id: number
-  OwnerId: number
-  Title: string
-  Description: string
-  TargetAmount: number
-  CurrentAmount: number
-  Currency: string
-  Deadline: string
-  Status: number
-  CreatedAt: string
-  UpdatedAt: string
-  WithdrawalType: number
-}
+import { getAllGoals, processPayment, type SavingsGoal } from "@/lib/api"
 
 type RoundMode = 'cent' | 'dollar' | '5' | '10' | 'custom'
 
@@ -44,23 +30,14 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [goals, setGoals] = useState<Goal[]>([])
+  const [goals, setGoals] = useState<SavingsGoal[]>([])
   const [goalsLoading, setGoalsLoading] = useState(true)
 
   useEffect(() => {
     const fetchGoals = async () => {
       try {
-        const token = document.cookie
-          .split("; ")
-          .find((c) => c.startsWith("auth_token="))
-          ?.split("=")[1]
-        const res = await fetch(
-          "https://personal-ntek2wae.outsystemscloud.com/GoalAtomicService/rest/Goal/GetAllGoals",
-          { headers: { Authorization: token ?? "" } }
-        )
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data: Goal[] = await res.json()
         const userId = Number(getUserId())
+        const data = await getAllGoals()
         setGoals(data.filter((g) => g.OwnerId === userId))
       } catch (err) {
         console.error("Failed to fetch goals:", err)
@@ -110,41 +87,17 @@ export function PaymentForm({ onPaymentSuccess }: PaymentFormProps) {
       setLoading(true)
       setError(null)
       setSuccess(false)
-
       const userId = Number(getUserId())
-      const token = document.cookie
-        .split("; ")
-        .find((c) => c.startsWith("auth_token="))
-        ?.split("=")[1]
-
-      const res = await fetch(
-        "https://personal-39ukomme.outsystemscloud.com/PaymentGateway_CS/rest/PaymentGatewayAPI/ProcessMerchantPayment",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ?? "",
-          },
-          body: JSON.stringify({
-            UserId: userId,
-            MerchantId: 1,
-            ItemAmount: roundUpData.purchaseAmount,
-            SavingsAmount: roundUpData.roundUpSavings,
-            Currency: "SGD",
-            GoalId: Number(selectedGoal),
-            BankTransferId: "",
-            MonthlyTransfersId: 0,
-          }),
-        }
-      )
-
-      const raw = await res.text()
-      console.log("Raw response:", raw)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-      const data = JSON.parse(raw)
-      if (data.HasError) throw new Error(data.ErrorMessage || "Payment failed")
-
+      await processPayment({
+        UserId: userId,
+        MerchantId: 1,
+        ItemAmount: roundUpData.purchaseAmount,
+        SavingsAmount: roundUpData.roundUpSavings,
+        Currency: "SGD",
+        GoalId: Number(selectedGoal),
+        BankTransferId: "",
+        MonthlyTransfersId: 0,
+      })
       setSuccess(true)
       setMerchantName("")
       setPurchaseAmount("")

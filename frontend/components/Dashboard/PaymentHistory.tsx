@@ -3,17 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Receipt, Loader2, AlertCircle } from "lucide-react"
-
-interface Payment {
-  PaymentId: number
-  UserId: string
-  ItemAmount: number
-  SavingsAmount: number
-  TotalAmount: number
-  TransactionDate: string
-  MerchantId: number
-  Currency: string
-}
+import { getPayments, type Payment } from "@/lib/api"
 
 export function PaymentHistory() {
   const [payments, setPayments] = useState<Payment[]>([])
@@ -25,32 +15,9 @@ export function PaymentHistory() {
         try {
           setLoading(true)
           setError(null)
-      
-          const token = document.cookie
-            .split("; ")
-            .find((c) => c.startsWith("auth_token="))
-            ?.split("=")[1]
-
-          const res = await fetch(
-            `https://personal-8wlttpq2.outsystemscloud.com/PaymentAtomicService/rest/PaymentAPI/GetPaymentByUserId`,
-            {
-              headers: { 
-                "Authorization": token ?? ""  // no "Bearer " prefix
-              }
-            }
-          )
-      
-          console.log("2. Status:", res.status)  // 200? 401? 500?
-      
-          const raw = await res.text()
-          console.log("3. Raw response:", raw)  // what did OutSystems actually return?
-      
-          if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      
-          const data: Payment[] = JSON.parse(raw)
-          setPayments([...data].reverse())
+          const data = await getPayments()
+          setPayments(data)
         } catch (err) {
-          console.log("4. Error:", err)
           setError("Failed to load payment history. Please try again.")
         } finally {
           setLoading(false)

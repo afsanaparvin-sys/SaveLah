@@ -14,20 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Activity, ArrowDownRight, ArrowUpRight, Coins, RefreshCw, Search, Loader2, AlertCircle } from "lucide-react"
+import { getLedgerByUserId, type LedgerTransaction } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
-
-interface LedgerTransaction {
-  LedgerId: number
-  UserId: number
-  GoalId: number
-  Type: string 
-  Amount: number
-  Currency: string
-  MonthlyTransfersId: number
-  PaymentId: number
-  BankTransferId: string  
-  CreatedOn: string 
-}
 
 // map integer enum to Transaction type string
 const typeMap: Record<string, Transaction["type"]> = {
@@ -53,23 +41,8 @@ export default function ActivityPage() {
       try {
         setLoading(true)
         setError(null)
-
         const userId = getUserId()
-        const token = document.cookie
-          .split("; ")
-          .find((c) => c.startsWith("auth_token="))
-          ?.split("=")[1]
-
-        const res = await fetch(
-          `https://personal-s6qgwhkb.outsystemscloud.com/DBEALedger/rest/LedgerNew/GetLedgerTransactionsByUserId?UserId=${userId}`,
-          {
-            headers: { "Authorization": token ?? "" }
-          }
-        )
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-        const data: LedgerTransaction[] = await res.json()
+        const data = await getLedgerByUserId(Number(userId))
         setRawTransactions(data)
       } catch (err) {
         setError("Failed to load transactions.")

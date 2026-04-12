@@ -5,37 +5,14 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreditCard, Coins, TrendingUp } from "lucide-react"
 import { PaymentHistory } from "@/components/Dashboard/PaymentHistory"
-
-interface Payment {
-  PaymentId: number
-  SavingsAmount: number
-  TotalAmount: number
-  TransactionDate: string
-  MerchantId: number
-  Currency: string
-}
+import { getPayments, type Payment } from "@/lib/api"
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
-    const fetchPayments = async () => {
-      try {
-        const token = document.cookie
-          .split("; ")
-          .find((c) => c.startsWith("auth_token="))
-          ?.split("=")[1]
-        const res = await fetch(
-          "https://personal-8wlttpq2.outsystemscloud.com/PaymentAtomicService/rest/PaymentAPI/GetPaymentByUserId",
-          { headers: { Authorization: token ?? "" } }
-        )
-        if (!res.ok) return
-        const data: Payment[] = await res.json()
-        setPayments(data)
-      } catch { }
-    }
-    fetchPayments()
+    getPayments().then(setPayments).catch(console.error)
   }, [refreshKey])
 
   const totalRoundUp = payments.reduce((s, p) => s + (parseFloat(String(p.SavingsAmount)) || 0), 0)
