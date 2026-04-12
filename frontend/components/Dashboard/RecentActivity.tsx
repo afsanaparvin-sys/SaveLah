@@ -6,20 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowUpRight, ArrowDownRight, RefreshCw, Coins, ArrowRight, Loader2, AlertCircle, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getLedgerByUserId, type LedgerTransaction } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
-
-interface LedgerTransaction {
-  LedgerId: number
-  UserId: number
-  GoalId: number
-  Type: string        // ← was number, now string
-  Amount: number
-  Currency: string
-  MonthlyTransfersId: number
-  PaymentId: number
-  BankTransferId: string  // ← was number, now string
-  CreatedOn: string
-}
 
 
 const typeConfig: Record<string, { label: string; icon: any; color: string }> = {
@@ -43,23 +31,8 @@ export function RecentActivity() {
       try {
         setLoading(true)
         setError(null)
-
         const userId = getUserId()
-        const token = document.cookie
-          .split("; ")
-          .find((c) => c.startsWith("auth_token="))
-          ?.split("=")[1]
-
-        const res = await fetch(
-          `https://personal-s6qgwhkb.outsystemscloud.com/DBEALedger/rest/LedgerNew/GetLedgerTransactionsByUserId?UserId=${userId}`,
-          {
-            headers: { "Authorization": token ?? "" }
-          }
-        )
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-        const data: LedgerTransaction[] = await res.json()
+        const data = await getLedgerByUserId(Number(userId))
         setTransactions(data.slice(0, 5))
       } catch (err) {
         setError("Failed to load recent activity.")
