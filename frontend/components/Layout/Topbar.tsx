@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, Search, ChevronDown, User, LogOut } from "lucide-react"
+import { Bell, Search, ChevronDown, User, LogOut, ShoppingBag } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { getUserName } from "@/lib/auth"
@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export function Topbar() {
   const [hasNotifications] = useState(true)
@@ -56,16 +56,33 @@ export function Topbar() {
           type="search"
           placeholder="Search goals, transactions..."
           className="h-10 w-full pl-10 text-sm border-0 focus-visible:ring-1"
-          style={{
-            background: "#F4F6F8",
-            color: "#0F1923",
-            borderRadius: 8,
-          }}
+          style={{ background: "#F4F6F8", color: "#0F1923", borderRadius: 8 }}
         />
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+
+        {/* Merchant simulator button */}
+        <button
+          onClick={() => router.push("/merchant-sim")}
+          className="flex items-center gap-1.5 text-sm rounded-lg px-3 h-9 transition-colors"
+          style={{
+            background: "#0F1923",
+            color: "#ffffff",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#2DD4BF", e.currentTarget.style.color = "#0F1923")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#0F1923", e.currentTarget.style.color = "#ffffff")}
+          title="Try merchant simulator"
+        >
+          <ShoppingBag style={{ width: 15, height: 15 }} />
+        </button>
+
         {/* Notifications */}
         <button
           className="relative flex items-center justify-center rounded-lg transition-colors"
@@ -75,7 +92,10 @@ export function Topbar() {
         >
           <Bell className="h-5 w-5" style={{ color: "#6B7F8E" }} />
           {hasNotifications && (
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full" style={{ background: "#EF4444" }} />
+            <span
+              className="absolute right-2 top-2 h-2 w-2 rounded-full"
+              style={{ background: "#EF4444" }}
+            />
           )}
         </button>
 
@@ -90,7 +110,10 @@ export function Topbar() {
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-sm font-bold" style={{ background: "#2DD4BF", color: "#0F1923" }}>
+                <AvatarFallback
+                  className="text-sm font-bold"
+                  style={{ background: "#2DD4BF", color: "#0F1923" }}
+                >
                   {initials}
                 </AvatarFallback>
               </Avatar>

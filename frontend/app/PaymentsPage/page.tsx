@@ -24,20 +24,17 @@ export default function PaymentsPage() {
         {/* Page Header */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Payment Simulation
+            Payments
           </h1>
           <p className="text-muted-foreground">
             Simulate purchases to see how round-ups contribute to your savings.
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Payment Form */}
-          <div className="lg:col-span-2">
-            <PaymentForm
-              onPaymentSuccess={() => setRefreshKey(k => k + 1)}
-            />
-          </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+
+          {/* Payment History - full width below */}
+          <PaymentHistory key={refreshKey} />
 
           {/* Stats Sidebar */}
           <div className="space-y-4">
@@ -94,8 +91,6 @@ export default function PaymentsPage() {
           </div>
         </div>
 
-        {/* Payment History - full width below */}
-        <PaymentHistory key={refreshKey} />
       </div>
     </DashboardLayout>
   )

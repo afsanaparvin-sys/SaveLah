@@ -48,7 +48,7 @@ export function PaymentHistory() {
           if (!res.ok) throw new Error(`HTTP ${res.status}`)
       
           const data: Payment[] = JSON.parse(raw)
-          setPayments(data)
+          setPayments([...data].reverse())
         } catch (err) {
           console.log("4. Error:", err)
           setError("Failed to load payment history. Please try again.")

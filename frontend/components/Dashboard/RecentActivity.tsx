@@ -93,7 +93,7 @@ export function RecentActivity() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Recent Activity</CardTitle>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/activity" className="gap-1 text-primary">
+        <Link href="/ActivityPage" className="gap-1 text-primary">
             View all
             <ArrowRight className="h-4 w-4" />
           </Link>
