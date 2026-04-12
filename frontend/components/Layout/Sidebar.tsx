@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -11,6 +12,7 @@ import {
   ArrowDownCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getKPICardDetails } from "@/lib/api"
 
 const navItems = [
   { href: "/Dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -23,6 +25,13 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [totalSavings, setTotalSavings] = useState<number | null>(null)
+
+  useEffect(() => {
+    getKPICardDetails()
+      .then((data) => setTotalSavings(data.TotalSavingsCard?.CurrentTotalSavings ?? null))
+      .catch(console.error)
+  }, [])
 
   return (
     <aside
@@ -105,7 +114,9 @@ export function Sidebar() {
             Total Savings
           </p>
           <p style={{ fontSize: 22, fontWeight: 700, color: "#2DD4BF", margin: 0 }}>
-            $12,450.00
+            {totalSavings != null
+              ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(totalSavings)
+              : "—"}
           </p>
         </div>
       </div>

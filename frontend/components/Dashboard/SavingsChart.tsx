@@ -34,6 +34,13 @@ export function SavingsChart({ data }: SavingsChartProps) {
   const lastValue = data[data.length - 1]?.savings || 0
   const growthPercent = firstValue > 0 ? ((lastValue - firstValue) / firstValue * 100).toFixed(1) : 0
 
+  const maxValue = Math.max(...data.map((d) => d.savings), 0)
+  const formatAxisTick = (value: number) => {
+    if (maxValue >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
+    if (maxValue >= 1_000) return `$${(value / 1_000).toFixed(1)}k`
+    return `$${value.toFixed(0)}`
+  }
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -72,7 +79,7 @@ export function SavingsChart({ data }: SavingsChartProps) {
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "oklch(0.5 0.02 250)", fontSize: 12 }}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                tickFormatter={formatAxisTick}
                 dx={-10}
               />
               <Tooltip

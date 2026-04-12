@@ -1,5 +1,67 @@
 const BASE_URL = "https://ypw.outsystemscloud.com/UserAuth/rest/UserAuth";
 const PROFILE_BASE_URL = "https://ypw.outsystemscloud.com/UserProfile/rest/UserProfile";
+const DASHBOARD_BASE_URL = "https://ypw.outsystemscloud.com/Dashboard/rest/Dashboard";
+
+export interface KPICardData {
+  TotalSavingsCard?: {
+    CurrentTotalSavings?: number;
+    DifferenceFromLastMonth?: number;
+  };
+  GoalOverviewCard?: {
+    TotalActive?: number;
+    TotalAddedThisMonth?: number;
+    TotalCompleted?: number;
+    TotalCompletedThisMonth?: number;
+    TotalCancelled?: number;
+    TotalCancelledThisMonth?: number;
+  };
+  RecurringTransfersCard?: {
+    MonthlyAmount?: number;
+    WeeklyAmount?: number;
+  };
+  DirectAndRoundUpSavingsCard?: {
+    RoundUpSavingsThisMonth?: number;
+    RoundUpSavingsDifferenceFromLastMonth?: number;
+    DirectSavingsThisMonth?: number;
+    DirectSavingsDifferenceFromLastMonth?: number;
+  };
+}
+
+export async function getKPICardDetails(): Promise<KPICardData> {
+  const token = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith("auth_token="))
+    ?.split("=")[1];
+
+  const res = await fetch(`${DASHBOARD_BASE_URL}/GetKPICardDetails`, {
+    method: "GET",
+    headers: { Authorization: token ?? "" },
+  });
+
+  if (!res.ok) throw new Error("Failed to fetch KPI card details.");
+  return res.json();
+}
+
+export async function getSavingsGrowth(): Promise<Array<{ month: string; savings: number }>> {
+  const token = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith("auth_token="))
+    ?.split("=")[1];
+
+  const res = await fetch(`${DASHBOARD_BASE_URL}/GetSavingsGrowth`, {
+    method: "GET",
+    headers: { Authorization: token ?? "" },
+  });
+
+  if (!res.ok) throw new Error("Failed to fetch savings growth.");
+
+  const data = await res.json();
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return data.MonthlyValueRecordList.map((item: { Month: number; Value: number }) => ({
+    month: months[item.Month - 1] ?? String(item.Month),
+    savings: item.Value,
+  }));
+}
 
 export async function signupUser(
   name: string,
