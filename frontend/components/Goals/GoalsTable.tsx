@@ -23,6 +23,7 @@ interface Goal {
   deadline: string
   status: string
   currency: string
+  isMock?: boolean
 }
 
 interface GoalsTableProps {
@@ -51,7 +52,7 @@ export function GoalsTable({ goals, className }: GoalsTableProps) {
     const config = {
       active: { label: "Active", className: "bg-success/10 text-success" },
       completed: { label: "Completed", className: "bg-primary/10 text-primary" },
-      paused: { label: "Paused", className: "bg-warning/10 text-warning-foreground" },
+      cancelled: { label: "Cancelled", className: "bg-destructive/10 text-destructive" },
     }[status] || { label: status, className: "" }
 
     return (
@@ -89,9 +90,16 @@ export function GoalsTable({ goals, className }: GoalsTableProps) {
                 <TableCell>
                   <Link href={`/GoalDetailsPage/${goal.id}`} className="block">
                     <div>
-                      <p className="font-medium group-hover:text-primary transition-colors">
-                        {goal.title}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium group-hover:text-primary transition-colors">
+                          {goal.title}
+                        </p>
+                        {goal.isMock && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-400 text-amber-600 dark:text-amber-400">
+                            Mock
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground line-clamp-1">
                         {goal.description}
                       </p>

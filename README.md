@@ -34,6 +34,7 @@ frontend/
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 
@@ -48,23 +49,15 @@ npm run dev
 
 App runs at `http://localhost:3000`
 
-### Environment Variables
-
-Create a `.env.local` file in `/frontend`:
-
-```
-NEXT_PUBLIC_API_BASE_URL=<OutSystems backend URL>
-```
-
 ## Key Features
 
-| Feature | Description |
-|---|---|
-| Automatic Monthly Transfers | Scheduled auto-debit from linked bank account to savings goal |
-| Collaborative Goals | Multiple users contribute to a shared goal with defined roles (Owner, Admin, Invitee) |
-| Goal Progress Tracker | Visual breakdown of each member's contribution vs target |
-| Round-up Savings | Rounds up payment transactions and splits remainder across goals |
-| Withdrawal | Owner-initiated withdrawal with ledger balance checks |
+| Feature                     | Description                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------- |
+| Automatic Monthly Transfers | Scheduled auto-debit from linked bank account to savings goal                         |
+| Collaborative Goals         | Multiple users contribute to a shared goal with defined roles (Owner, Admin, Invitee) |
+| Goal Progress Tracker       | Visual breakdown of each member's contribution vs target                              |
+| Round-up Savings            | Rounds up payment transactions and splits remainder across goals                      |
+| Withdrawal                  | Owner-initiated withdrawal with ledger balance checks                                 |
 
 ## Development Guidelines
 
@@ -76,8 +69,8 @@ NEXT_PUBLIC_API_BASE_URL=<OutSystems backend URL>
 
 ## Team
 
-| Name | Role |
-|---|---|
-| [Your name] | ... |
+| Name        | Role |
+| ----------- | ---- |
+| [Your name] | ...  |
 
 A few things to **fill in before sharing**: the actual GitHub URL, your OutSystems backend URL, and the team table. You may also want to add a `CONTRIBUTING.md` if the team is larger, but for a small group this README is enough to get everyone oriented.

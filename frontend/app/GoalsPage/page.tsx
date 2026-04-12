@@ -1,15 +1,84 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { GoalsTable } from "@/components/Goals/GoalsTable"
 import { CreateGoalModal } from "@/components/Goals/CreateGoalModal"
 import { Button } from "@/components/ui/button"
 import { Plus, Target } from "lucide-react"
-import { goals } from "@/lib/mock-data"
+import { getAllGoalsByUser } from "@/lib/api"
+import { getUserId } from "@/lib/auth"
+import { toast } from "sonner"
+
+interface GoalRow {
+  id: string
+  title: string
+  description: string
+  targetAmount: number
+  currentAmount: number
+  deadline: string
+  status: string
+  currency: string
+  isMock?: boolean
+}
 
 export default function GoalsPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [goalsList, setGoalsList] = useState<GoalRow[]>([])
+  const [loadingGoals, setLoadingGoals] = useState(true)
+
+  useEffect(() => {
+    const userId = parseInt(getUserId(), 10)
+    if (!userId) {
+      setLoadingGoals(false)
+      return
+    }
+
+    getAllGoalsByUser(userId)
+      .then((records) => {
+        setGoalsList(
+          records.map(({ SavingsGoal: g }) => ({
+            id: String(g.Id),
+            title: g.Title,
+            description: g.Description,
+            targetAmount: g.TargetAmount,
+            currentAmount: g.CurrentAmount ?? 0,
+            deadline: g.Deadline,
+            status: g.Status === 1 ? "active" : g.Status === 2 ? "completed" : "cancelled",
+            currency: g.Currency,
+            isMock: false,
+          }))
+        )
+      })
+      .catch(() => toast.error("Failed to load goals."))
+      .finally(() => setLoadingGoals(false))
+  }, [])
+
+  const handleGoalCreated = async () => {
+    const userId = parseInt(getUserId(), 10)
+    if (!userId) return
+    try {
+      const records = await getAllGoalsByUser(userId)
+      setGoalsList(
+        records.map(({ SavingsGoal: g }) => ({
+          id: String(g.Id),
+          title: g.Title,
+          description: g.Description,
+          targetAmount: g.TargetAmount,
+          currentAmount: g.CurrentAmount ?? 0,
+          deadline: g.Deadline,
+          status: g.Status === 1 ? "active" : g.Status === 2 ? "completed" : "cancelled",
+          currency: g.Currency,
+          isMock: false,
+        }))
+      )
+    } catch {
+      // not a blocker — goal was created successfully
+    }
+  }
+
+  const activeCount = goalsList.filter((g) => g.status === "active").length
+  const totalTarget = goalsList.reduce((acc, g) => acc + g.targetAmount, 0)
 
   return (
     <DashboardLayout>
@@ -37,7 +106,7 @@ export default function GoalsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Goals</p>
-                <p className="text-2xl font-bold">{goals.length}</p>
+                <p className="text-2xl font-bold">{goalsList.length}</p>
               </div>
             </div>
           </div>
@@ -48,9 +117,7 @@ export default function GoalsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active Goals</p>
-                <p className="text-2xl font-bold">
-                  {goals.filter((g) => g.status === "active").length}
-                </p>
+                <p className="text-2xl font-bold">{activeCount}</p>
               </div>
             </div>
           </div>
@@ -62,7 +129,7 @@ export default function GoalsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Target</p>
                 <p className="text-2xl font-bold">
-                  ${goals.reduce((acc, g) => acc + g.targetAmount, 0).toLocaleString()}
+                  ${totalTarget.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -70,12 +137,25 @@ export default function GoalsPage() {
         </div>
 
         {/* Goals Table */}
-        <GoalsTable goals={goals} />
+        {loadingGoals ? (
+          <div className="flex items-center justify-center py-20 text-muted-foreground">
+            Loading goals...
+          </div>
+        ) : goalsList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Target className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="font-medium">No goals yet</p>
+            <p className="text-sm text-muted-foreground">Create your first savings goal to get started.</p>
+          </div>
+        ) : (
+          <GoalsTable goals={goalsList} />
+        )}
 
         {/* Create Goal Modal */}
         <CreateGoalModal
           open={createModalOpen}
           onOpenChange={setCreateModalOpen}
+          onGoalCreated={handleGoalCreated}
         />
       </div>
     </DashboardLayout>

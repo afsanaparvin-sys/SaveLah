@@ -1,6 +1,22 @@
 const BASE_URL = "https://ypw.outsystemscloud.com/UserAuth/rest/UserAuth";
 const PROFILE_BASE_URL = "https://ypw.outsystemscloud.com/UserProfile/rest/UserProfile";
 const DASHBOARD_BASE_URL = "https://ypw.outsystemscloud.com/Dashboard/rest/Dashboard";
+const GOAL_BASE_URL = "https://personal-fhcnbshw.outsystemscloud.com/ManageGoalComposite/rest/ManageGoal";
+const GOAL_ATOMIC_BASE_URL = "https://personal-ntek2wae.outsystemscloud.com/GoalAtomicService/rest/Goal";
+
+// --- Auth helper ---
+
+function getAuthToken(): string {
+  if (typeof document === "undefined") return "";
+  return (
+    document.cookie
+      .split("; ")
+      .find((c) => c.startsWith("auth_token="))
+      ?.split("=")[1] ?? ""
+  );
+}
+
+// --- Dashboard ---
 
 export interface KPICardData {
   TotalSavingsCard?: {
@@ -63,6 +79,102 @@ export async function getSavingsGrowth(): Promise<Array<{ month: string; savings
   }));
 }
 
+// --- Goals ---
+
+export interface CreateGoalContributor {
+  UserId: number
+  RoleEnumId: number
+  TargetAmount: number
+}
+
+export interface CreateGoalRequest {
+  Title: string
+  Description: string
+  TargetAmount: number
+  Currency: string
+  Deadline: string
+  WithdrawalType: number
+  CreateGoalAPIRequestContributors: CreateGoalContributor[]
+}
+
+export interface SavingsGoal {
+  Id: number
+  OwnerId: number
+  Title: string
+  Description: string
+  TargetAmount: number
+  CurrentAmount: number
+  Currency: string
+  Deadline: string
+  Status: number
+  CreatedAt: string
+  UpdatedAt: string
+  WithdrawalType?: number
+}
+
+export interface GoalContributionRecord {
+  SavingsGoal: SavingsGoal
+  GoalContributions: {
+    Id: number
+    GoalId: number
+    UserId: number
+    TargetAmount: number
+    CurrentAmount: number
+    CreatedAt: string
+    UpdatedAt: string
+    Role: number
+  }
+}
+
+export interface GoalMember {
+  Id: number
+  GoalId: number
+  UserId: number
+  TargetAmount: number
+  CurrentAmount: number
+  CreatedAt: string
+  UpdatedAt: string
+  Name: string
+}
+
+export interface GoalWithMembers {
+  Goal: SavingsGoal
+  Members: GoalMember[]
+}
+
+export async function getAllGoalsByUser(userId: number): Promise<GoalContributionRecord[]> {
+  const res = await fetch(`${GOAL_ATOMIC_BASE_URL}/goalContributions/user/${userId}`, {
+    method: "GET",
+    headers: { Authorization: getAuthToken() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch goals.");
+  return res.json();
+}
+
+export async function getGoal(goalId: number): Promise<GoalWithMembers> {
+  const res = await fetch(`${GOAL_BASE_URL}/GetGoal?GoalId=${goalId}`, {
+    method: "GET",
+    headers: { Authorization: getAuthToken() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch goal.");
+  return res.json();
+}
+
+export async function createGoal(data: CreateGoalRequest): Promise<number> {
+  const res = await fetch(`${GOAL_BASE_URL}/CreateGoal`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: getAuthToken(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create goal.");
+  return res.json();
+}
+
+// --- User / Auth ---
+
 export async function signupUser(
   name: string,
   email: string,
@@ -87,6 +199,21 @@ export async function signupUser(
   if (!res.ok) throw new Error("Failed to create account.");
 }
 
+export interface UserByEmailData {
+  UserId: number
+  Name: string
+  Email: string
+}
+
+export async function getUserByEmail(email: string): Promise<UserByEmailData> {
+  const res = await fetch(
+    `${PROFILE_BASE_URL}/GetUserDetailsFromEmail?Email=${encodeURIComponent(email)}`,
+    { method: "GET", headers: { Authorization: getAuthToken() } }
+  );
+  if (!res.ok) throw new Error("User not found.");
+  return res.json();
+}
+
 export interface UserProfileData {
   Name: string;
   Email: string;
@@ -109,6 +236,7 @@ export async function getUserProfile(): Promise<UserProfileData> {
   if (!res.ok) throw new Error("Failed to fetch profile.");
   return res.json();
 }
+
 export async function updateUserProfile(data: UserProfileData): Promise<void> {
   const token = document.cookie
     .split("; ")
