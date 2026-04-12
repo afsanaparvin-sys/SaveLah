@@ -22,6 +22,7 @@ import {
 import { goals as mockGoals, goalMembers, recentTransactions } from "@/lib/mock-data"
 import { getGoal, type GoalMember } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
+import { ContributeModal } from "@/components/Goals/ContributeModal"
 
 interface GoalDetailsPageProps {
   params: Promise<{ id: string }>
@@ -66,16 +67,11 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
   )
   const [loading, setLoading] = useState(!mockGoal)
   const [error, setError] = useState(false)
+  const [contributeOpen, setContributeOpen] = useState(false)
 
-  useEffect(() => {
-    if (mockGoal) return
-
+  const loadGoal = () => {
     const numericId = parseInt(id, 10)
-    if (isNaN(numericId)) {
-      setError(true)
-      return
-    }
-
+    if (isNaN(numericId)) { setError(true); return }
     getGoal(numericId)
       .then(({ Goal, Members }) => {
         setGoal({
@@ -104,6 +100,11 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    if (mockGoal) return
+    loadGoal()
   }, [id])
 
   const transactions = goal?.isMock
@@ -244,6 +245,11 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
                 <p className="text-sm text-muted-foreground">
                   of {formatCurrency(goal.targetAmount, goal.currency)} target
                 </p>
+                {myMember && goal.status === "active" && myMember.contributionTarget > myMember.currentContribution && (
+                  <Button className="mt-3" onClick={() => setContributeOpen(true)}>
+                    Contribute
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -261,6 +267,33 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
                 remaining to reach your goal
               </p>
             </div>
+
+            {/* My Contribution */}
+            {myMember && (
+              <div className="mt-5 rounded-xl bg-muted/40 border px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 space-y-2 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">My Contribution</span>
+                    <span className="text-xs text-muted-foreground">{myProgress}%</span>
+                  </div>
+                  <ProgressBar value={myMember.currentContribution} max={myMember.contributionTarget} size="sm" />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      <span className="font-semibold text-foreground">{formatCurrency(myMember.currentContribution, goal.currency)}</span>
+                      {" of "}{formatCurrency(myMember.contributionTarget, goal.currency)}
+                    </span>
+                    {myMember.contributionTarget > myMember.currentContribution ? (
+                      <span>{formatCurrency(myMember.contributionTarget - myMember.currentContribution, goal.currency)} left</span>
+                    ) : (
+                      <span className="text-success font-medium">Target reached ✓</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -348,7 +381,7 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
           {/* Transactions */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Recent Transactions</CardTitle>
+              <CardTitle className="text-lg">Recent Contributions</CardTitle>
             </CardHeader>
             <CardContent>
               {transactions.length > 0 ? (
@@ -356,7 +389,7 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <p className="text-muted-foreground">
-                    No transactions yet for this goal.
+                    No contributions yet for this goal.
                   </p>
                 </div>
               )}
@@ -364,6 +397,17 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
           </Card>
         </div>
       </div>
+
+      {myMember && (
+        <ContributeModal
+          open={contributeOpen}
+          onOpenChange={setContributeOpen}
+          goalId={parseInt(id, 10)}
+          currency={goal.currency}
+          maxAmount={Math.max(0, myMember.contributionTarget - myMember.currentContribution)}
+          onSuccess={loadGoal}
+        />
+      )}
     </DashboardLayout>
   )
 }

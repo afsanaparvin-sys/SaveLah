@@ -333,6 +333,15 @@ export async function createAutoTransfer(goalId: number, transferAmount: number,
   if (!res.ok) throw new Error("Failed to create transfer.");
 }
 
+export async function makeContribution(goalId: number, contributionAmount: number): Promise<void> {
+  const res = await fetch(`${GOAL_BASE_URL}/MakeContributionToGoal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: getAuthToken() },
+    body: JSON.stringify({ GoalId: goalId, ContributionAmount: contributionAmount }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
 export async function deleteAutoTransfer(monthlyId: number): Promise<void> {
   const res = await fetch(`${TRANSFERS_BASE_URL}/automatictransfers/${monthlyId}`, {
     method: "DELETE",

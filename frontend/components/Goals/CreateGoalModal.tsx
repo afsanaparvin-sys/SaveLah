@@ -296,7 +296,7 @@ export function CreateGoalModal({
                   </SelectTrigger>
                   <SelectContent>
                     {currencies.map((currency) => (
-                      <SelectItem key={currency.value} value={currency.value}>
+                      <SelectItem key={currency.value} value={currency.value} disabled={currency.value !== "SGD"}>
                         {currency.label}
                       </SelectItem>
                     ))}

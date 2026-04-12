@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { AutoTransferForm } from "@/components/Forms/AutoTransferForm"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -72,6 +73,9 @@ export default function TransfersPage() {
 
   const goalTitle = (goalId: number) =>
     goals.find((g) => g.Id === goalId)?.Title ?? `Goal #${goalId}`
+
+  const goalStatus = (goalId: number) =>
+    goals.find((g) => g.Id === goalId)?.Status ?? 1
 
   const fmt = (amount: number) =>
     new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD", minimumFractionDigits: 2 }).format(amount)
@@ -167,13 +171,23 @@ export default function TransfersPage() {
                       </TableHeader>
                       <TableBody>
                         {transfers.map((t) => (
-                          <TableRow key={t.MonthlyId} className="hover:bg-muted/30">
+                          <TableRow key={t.MonthlyId} className={`hover:bg-muted/30 ${goalStatus(t.GoalId) !== 1 ? "bg-destructive/5" : ""}`}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                                  <RefreshCw className="h-4 w-4 text-primary" />
+                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${goalStatus(t.GoalId) !== 1 ? "bg-destructive/10" : "bg-primary/10"}`}>
+                                  <RefreshCw className={`h-4 w-4 ${goalStatus(t.GoalId) !== 1 ? "text-destructive" : "text-primary"}`} />
                                 </div>
-                                <span className="font-medium">{goalTitle(t.GoalId)}</span>
+                                <div>
+                                  <span className="font-medium">{goalTitle(t.GoalId)}</span>
+                                  {goalStatus(t.GoalId) !== 1 && (
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">
+                                        {goalStatus(t.GoalId) === 2 ? "Goal Completed" : "Goal Cancelled"}
+                                      </Badge>
+                                      <span className="text-xs text-destructive">— please delete this transfer</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell className="font-semibold text-success">{fmt(t.TransferAmount)}</TableCell>
