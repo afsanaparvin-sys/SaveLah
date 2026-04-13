@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { PiggyBank } from "lucide-react"
 import { toast } from "sonner"
 import { makeContribution } from "@/lib/api"
+import { useSavings } from "@/lib/SavingsContext"
 
 interface ContributeModalProps {
   open: boolean
@@ -36,6 +37,7 @@ export function ContributeModal({
 }: ContributeModalProps) {
   const [amountRaw, setAmountRaw] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const { refreshSavings } = useSavings()
 
   const amount = parseFloat(amountRaw)
   const isValid = !isNaN(amount) && amount > 0 && amount <= maxAmount
@@ -54,6 +56,7 @@ export function ContributeModal({
     try {
       await makeContribution(goalId, amount)
       toast.success(`${fmt(amount)} contributed successfully!`)
+      refreshSavings()
       onSuccess()
       onOpenChange(false)
       setAmountRaw("")

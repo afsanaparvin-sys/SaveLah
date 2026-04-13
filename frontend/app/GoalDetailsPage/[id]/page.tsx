@@ -23,6 +23,7 @@ import { goals as mockGoals, goalMembers, recentTransactions } from "@/lib/mock-
 import { getGoal, getLedgerByUserId, deleteGoal, withdrawGoal, type GoalMember, type LedgerTransaction } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
 import { ContributeModal } from "@/components/Goals/ContributeModal"
+import { useSavings } from "@/lib/SavingsContext"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -69,6 +70,7 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
   const mockGoal = mockGoals.find((g) => g.id === id)
   const currentUserId = parseInt(getUserId(), 10)
   const router = useRouter()
+  const { refreshSavings } = useSavings()
 
   const [goal, setGoal] = useState<PageGoal | null>(
     mockGoal ? { ...mockGoal, ownerId: 0, isMock: true, withdrawalType: null, createdAt: null } : null
@@ -332,6 +334,7 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
                                 setWithdrawLoading(true)
                                 try {
                                   await withdrawGoal(parseInt(id, 10))
+                                  refreshSavings()
                                   setWithdrawConfirmOpen(false)
                                   setWithdrawSuccess(true)
                                 } catch {

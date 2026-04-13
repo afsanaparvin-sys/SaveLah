@@ -309,14 +309,6 @@ export async function getLedgerByUserId(userId: number): Promise<LedgerTransacti
   return data.filter((tx) => tx.LedgerId !== 0);
 }
 
-export async function getAllGoals(): Promise<SavingsGoal[]> {
-  const res = await fetch(`${GOAL_ATOMIC_BASE_URL}/GetAllGoals`, {
-    headers: { Authorization: getAuthToken() },
-  });
-  if (!res.ok) throw new Error("Failed to fetch goals.");
-  return res.json();
-}
-
 export async function getGoalsByCurrentUser(): Promise<SavingsGoal[]> {
   const res = await fetch(`${GOAL_ATOMIC_BASE_URL}/GetGoalsByCurrentUserId`, {
     headers: { Authorization: getAuthToken() },

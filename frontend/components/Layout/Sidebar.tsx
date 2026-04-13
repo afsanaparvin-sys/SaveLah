@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -11,7 +11,7 @@ import {
   Activity,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getKPICardDetails } from "@/lib/api"
+import { useSavings } from "@/lib/SavingsContext"
 
 const navItems = [
   { href: "/Dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -23,12 +23,10 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const [totalSavings, setTotalSavings] = useState<number | null>(null)
+  const { totalSavings, refreshSavings } = useSavings()
 
   useEffect(() => {
-    getKPICardDetails()
-      .then((data) => setTotalSavings(data.TotalSavingsCard?.CurrentTotalSavings ?? null))
-      .catch(console.error)
+    refreshSavings()
   }, [])
 
   return (
