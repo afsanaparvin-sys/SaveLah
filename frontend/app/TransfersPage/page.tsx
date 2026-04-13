@@ -10,7 +10,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { RefreshCw, Trash2, DollarSign, Loader2 } from "lucide-react"
-import { getCurrentUserTransfers, getGoalsByCurrentUser, deleteAutoTransfer, triggerAutomaticTransfer, type AutoTransfer, type SavingsGoal } from "@/lib/api"
+import { getCurrentUserTransfers, getGoalsByCurrentUser, getAllGoalsByUser, deleteAutoTransfer, triggerAutomaticTransfer, type AutoTransfer, type SavingsGoal, type GoalContributionRecord } from "@/lib/api"
+import { getUserId } from "@/lib/auth"
 import { toast } from "sonner"
 
 function getNextTransferDate(frequency: string): string {
@@ -30,13 +31,16 @@ function getNextTransferDate(frequency: string): string {
 export default function TransfersPage() {
   const [transfers, setTransfers] = useState<AutoTransfer[]>([])
   const [goals, setGoals] = useState<SavingsGoal[]>([])
+  const [contributions, setContributions] = useState<GoalContributionRecord[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchData = async () => {
     try {
-      const [t, g] = await Promise.all([getCurrentUserTransfers(), getGoalsByCurrentUser()])
+      const userId = parseInt(getUserId(), 10)
+      const [t, g, c] = await Promise.all([getCurrentUserTransfers(), getGoalsByCurrentUser(), getAllGoalsByUser(userId)])
       setTransfers(t)
       setGoals(g)
+      setContributions(c)
     } catch {
       // silently fail — table will just be empty
     } finally {
@@ -76,6 +80,13 @@ export default function TransfersPage() {
 
   const goalStatus = (goalId: number) =>
     goals.find((g) => g.Id === goalId)?.Status ?? 1
+
+  const myContributionReached = (goalId: number) => {
+    const record = contributions.find((c) => c.SavingsGoal.Id === goalId)
+    if (!record) return false
+    const { CurrentAmount, TargetAmount } = record.GoalContributions
+    return TargetAmount > 0 && CurrentAmount >= TargetAmount
+  }
 
   const fmt = (amount: number) =>
     new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD", minimumFractionDigits: 2 }).format(amount)
@@ -171,20 +182,22 @@ export default function TransfersPage() {
                       </TableHeader>
                       <TableBody>
                         {transfers.map((t) => (
-                          <TableRow key={t.MonthlyId} className={`hover:bg-muted/30 ${goalStatus(t.GoalId) !== 1 ? "bg-destructive/5" : ""}`}>
+                          <TableRow key={t.MonthlyId} className={`hover:bg-muted/30 ${goalStatus(t.GoalId) !== 1 || myContributionReached(t.GoalId) ? "bg-destructive/5" : ""}`}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${goalStatus(t.GoalId) !== 1 ? "bg-destructive/10" : "bg-primary/10"}`}>
-                                  <RefreshCw className={`h-4 w-4 ${goalStatus(t.GoalId) !== 1 ? "text-destructive" : "text-primary"}`} />
+                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${goalStatus(t.GoalId) !== 1 || myContributionReached(t.GoalId) ? "bg-destructive/10" : "bg-primary/10"}`}>
+                                  <RefreshCw className={`h-4 w-4 ${goalStatus(t.GoalId) !== 1 || myContributionReached(t.GoalId) ? "text-destructive" : "text-primary"}`} />
                                 </div>
                                 <div>
                                   <span className="font-medium">{goalTitle(t.GoalId)}</span>
-                                  {goalStatus(t.GoalId) !== 1 && (
+                                  {(goalStatus(t.GoalId) !== 1 || myContributionReached(t.GoalId)) && (
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                       <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">
-                                        {goalStatus(t.GoalId) === 2 ? "Goal Completed" : "Goal Cancelled"}
+                                        {myContributionReached(t.GoalId) && goalStatus(t.GoalId) === 1
+                                          ? "Individual Target Reached"
+                                          : goalStatus(t.GoalId) === 2 ? "Goal Completed" : goalStatus(t.GoalId) === 3 ? "Goal Cancelled" : "Goal Completed & Withdrawn"}
                                       </Badge>
-                                      <span className="text-xs text-destructive">— please delete this transfer</span>
+                                      <span className="text-xs text-destructive">- you can safely delete this transfer</span>
                                     </div>
                                   )}
                                 </div>

@@ -33,7 +33,7 @@ export function RecentActivity() {
         setError(null)
         const userId = getUserId()
         const data = await getLedgerByUserId(Number(userId))
-        setTransactions(data.slice(0, 5))
+        setTransactions(data.slice(0, 4))
       } catch (err) {
         setError("Failed to load recent activity.")
       } finally {

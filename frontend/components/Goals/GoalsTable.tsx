@@ -53,6 +53,7 @@ export function GoalsTable({ goals, className }: GoalsTableProps) {
       active: { label: "Active", className: "bg-success/10 text-success" },
       completed: { label: "Completed", className: "bg-primary/10 text-primary" },
       cancelled: { label: "Cancelled", className: "bg-destructive/10 text-destructive" },
+      withdrawn: { label: "Completed & Withdrawn", className: "bg-accent/10 text-accent" },
     }[status] || { label: status, className: "" }
 
     return (

@@ -5,10 +5,11 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 import { GoalCard } from "@/components/Dashboard/GoalCard"
 import { CreateGoalModal } from "@/components/Goals/CreateGoalModal"
 import { Button } from "@/components/ui/button"
-import { Plus, Target } from "lucide-react"
+import { Plus, Target, ChevronDown, ChevronRight, Wallet } from "lucide-react"
 import { getAllGoalsByUser } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface GoalRow {
   id: string
@@ -19,6 +20,8 @@ interface GoalRow {
   deadline: string
   status: string
   currency: string
+  myContribution: number
+  myTarget: number
   isMock?: boolean
 }
 
@@ -37,15 +40,17 @@ export default function GoalsPage() {
     getAllGoalsByUser(userId)
       .then((records) => {
         setGoalsList(
-          records.map(({ SavingsGoal: g }) => ({
+          records.map(({ SavingsGoal: g, GoalContributions: c }) => ({
             id: String(g.Id),
             title: g.Title,
             description: g.Description,
             targetAmount: g.TargetAmount,
             currentAmount: g.CurrentAmount ?? 0,
             deadline: g.Deadline,
-            status: g.Status === 1 ? "active" : g.Status === 2 ? "completed" : "cancelled",
+            status: g.Status === 1 ? "active" : g.Status === 2 ? "completed" : g.Status === 3 ? "cancelled" : "withdrawn",
             currency: g.Currency,
+            myContribution: c?.CurrentAmount ?? 0,
+            myTarget: c?.TargetAmount ?? 0,
             isMock: false,
           }))
         )
@@ -60,15 +65,17 @@ export default function GoalsPage() {
     try {
       const records = await getAllGoalsByUser(userId)
       setGoalsList(
-        records.map(({ SavingsGoal: g }) => ({
+        records.map(({ SavingsGoal: g, GoalContributions: c }) => ({
           id: String(g.Id),
           title: g.Title,
           description: g.Description,
           targetAmount: g.TargetAmount,
           currentAmount: g.CurrentAmount ?? 0,
           deadline: g.Deadline,
-          status: g.Status === 1 ? "active" : g.Status === 2 ? "completed" : "cancelled",
+          status: g.Status === 1 ? "active" : g.Status === 2 ? "completed" : g.Status === 3 ? "cancelled" : "withdrawn",
           currency: g.Currency,
+          myContribution: c?.CurrentAmount ?? 0,
+          myTarget: c?.TargetAmount ?? 0,
           isMock: false,
         }))
       )
@@ -77,8 +84,17 @@ export default function GoalsPage() {
     }
   }
 
+  const sortByDeadline = (list: GoalRow[]) =>
+    [...list].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ active: true, completed: true, cancelled: true, withdrawn: true })
+
+  const toggleSection = (status: string) =>
+    setExpanded((prev) => ({ ...prev, [status]: !prev[status] }))
+
   const activeCount = goalsList.filter((g) => g.status === "active").length
-  const totalTarget = goalsList.reduce((acc, g) => acc + g.targetAmount, 0)
+  const totalSaved = goalsList.filter((g) => g.status === "active").reduce((acc, g) => acc + g.currentAmount, 0)
+  const totalTarget = goalsList.filter((g) => g.status === "active").reduce((acc, g) => acc + g.targetAmount, 0)
 
   return (
     <DashboardLayout>
@@ -98,7 +114,7 @@ export default function GoalsPage() {
         </div>
 
         {/* Stats Summary */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -123,11 +139,22 @@ export default function GoalsPage() {
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+                <Wallet className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Active Savings</p>
+                <p className="text-2xl font-bold">${totalSaved.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
                 <Target className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Target</p>
+                <p className="text-sm text-muted-foreground">Total Active Target</p>
                 <p className="text-2xl font-bold">
                   ${totalTarget.toLocaleString()}
                 </p>
@@ -148,20 +175,45 @@ export default function GoalsPage() {
             <p className="text-sm text-muted-foreground">Create your first savings goal to get started.</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {goalsList.map((goal) => (
-              <GoalCard
-                key={goal.id}
-                id={goal.id}
-                title={goal.title}
-                description={goal.description}
-                currentAmount={goal.currentAmount}
-                targetAmount={goal.targetAmount}
-                deadline={goal.deadline}
-                currency={goal.currency}
-                status={goal.status}
-              />
-            ))}
+          <div className="space-y-8">
+            {(["active", "completed", "cancelled", "withdrawn"] as const).map((status) => {
+              const filtered = sortByDeadline(goalsList.filter((g) => g.status === status))
+              if (filtered.length === 0) return null
+              const label = status === "active" ? "Active" : status === "completed" ? "Completed" : status === "cancelled" ? "Cancelled" : "Completed & Withdrawn"
+              const dotColor = status === "active" ? "bg-success" : status === "completed" ? "bg-primary" : status === "cancelled" ? "bg-destructive" : "bg-accent"
+              return (
+                <div key={status}>
+                  <button
+                    onClick={() => toggleSection(status)}
+                    className="flex items-center gap-2 mb-3 text-base font-semibold hover:text-primary transition-colors"
+                  >
+                    {expanded[status] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className={cn("inline-block h-2.5 w-2.5 rounded-full", dotColor)} />
+                    {label}
+                    <span className="text-sm font-normal text-muted-foreground">({filtered.length})</span>
+                  </button>
+                  {expanded[status] && (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {filtered.map((goal) => (
+                        <GoalCard
+                          key={goal.id}
+                          id={goal.id}
+                          title={goal.title}
+                          description={goal.description}
+                          currentAmount={goal.currentAmount}
+                          targetAmount={goal.targetAmount}
+                          deadline={goal.deadline}
+                          currency={goal.currency}
+                          status={goal.status}
+                          myContribution={goal.myContribution}
+                          myTarget={goal.myTarget}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 

@@ -9,7 +9,6 @@ import {
   CreditCard,
   RefreshCw,
   Activity,
-  ArrowDownCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getKPICardDetails } from "@/lib/api"
@@ -20,7 +19,6 @@ const navItems = [
   { href: "/PaymentsPage", label: "Payments", icon: CreditCard },
   { href: "/TransfersPage", label: "Auto Transfers", icon: RefreshCw },
   { href: "/ActivityPage", label: "Activity", icon: Activity },
-  { href: "/WithdrawPage", label: "Withdraw", icon: ArrowDownCircle },
 ]
 
 export function Sidebar() {

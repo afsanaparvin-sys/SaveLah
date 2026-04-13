@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Activity, ArrowDownRight, ArrowUpRight, Coins, RefreshCw, Search, Loader2, AlertCircle } from "lucide-react"
-import { getLedgerByUserId, type LedgerTransaction } from "@/lib/api"
+import { getLedgerByUserId, getAllGoalsByUser, type LedgerTransaction } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
 
 // map integer enum to Transaction type string
@@ -28,6 +28,7 @@ const typeMap: Record<string, Transaction["type"]> = {
 
 export default function ActivityPage() {
   const [rawTransactions, setRawTransactions] = useState<LedgerTransaction[]>([])
+  const [goalNameMap, setGoalNameMap] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,8 +43,12 @@ export default function ActivityPage() {
         setLoading(true)
         setError(null)
         const userId = getUserId()
-        const data = await getLedgerByUserId(Number(userId))
+        const [data, goals] = await Promise.all([
+          getLedgerByUserId(Number(userId)),
+          getAllGoalsByUser(Number(userId)),
+        ])
         setRawTransactions(data)
+        setGoalNameMap(Object.fromEntries(goals.map(({ SavingsGoal: g }) => [g.Id, g.Title])))
       } catch (err) {
         setError("Failed to load transactions.")
       } finally {
@@ -58,7 +63,7 @@ export default function ActivityPage() {
   const transactions: Transaction[] = rawTransactions.map((tx) => ({
     id: String(tx.LedgerId),
     type: typeMap[tx.Type] ?? "transfer",
-    goalName: `Goal #${tx.GoalId}`,
+    goalName: goalNameMap[tx.GoalId] ?? `Goal #${tx.GoalId}`,
     amount: tx.Amount,
     currency: tx.Currency || "SGD",
     date: tx.CreatedOn ?? new Date().toISOString(),

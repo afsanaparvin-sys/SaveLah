@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { getUserId } from "@/lib/auth"
+import { getAllGoalsByUser, processPayment, type GoalContributionRecord } from "@/lib/api"
 
 type RoundMode = '50cent' | 'dollar' | '5' | '10' | 'custom'
 type PayMethod = 'visa' | 'paynow' | 'savelah' | ''
@@ -45,6 +46,7 @@ export function MerchantSimulationForm() {
   const [customAmt, setCustomAmt]     = useState("")
   const [selectedGoal, setSelectedGoal] = useState("")
   const [goals, setGoals]             = useState<Goal[]>([])
+  const [goalRecords, setGoalRecords]  = useState<GoalContributionRecord[]>([])
   const [goalsLoading, setGoalsLoading] = useState(true)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState<string | null>(null)
@@ -53,15 +55,13 @@ export function MerchantSimulationForm() {
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const token = document.cookie.split("; ").find(c => c.startsWith("auth_token="))?.split("=")[1]
-        const res = await fetch(
-          "https://personal-ntek2wae.outsystemscloud.com/GoalAtomicService/rest/Goal/GetAllGoals",
-          { headers: { Authorization: token ?? "" } }
-        )
-        if (!res.ok) throw new Error()
-        const data: Goal[] = await res.json()
         const uid = Number(getUserId())
-        setGoals(data.filter((g: any) => g.OwnerId === uid))
+        const records = await getAllGoalsByUser(uid)
+        const eligible = records.filter(({ SavingsGoal: g, GoalContributions: c }) =>
+          g.Status === 1 && c.CurrentAmount < c.TargetAmount
+        )
+        setGoalRecords(eligible)
+        setGoals(eligible.map(({ SavingsGoal: g }) => ({ Id: g.Id, OwnerId: g.OwnerId, Title: g.Title })))
       } catch { } finally { setGoalsLoading(false) }
     }
     fetch_()
@@ -78,7 +78,15 @@ export function MerchantSimulationForm() {
     return { roundedTotal: r, savings: Math.round((r - BASE) * 100) / 100 }
   }, [roundMode, customAmt])
 
-  const payTotal = method === 'savelah' ? roundedTotal : BASE
+  const selectedRecord = goalRecords.find(r => String(r.SavingsGoal.Id) === selectedGoal)
+  const remainingTarget = selectedRecord
+    ? Math.round((selectedRecord.GoalContributions.TargetAmount - selectedRecord.GoalContributions.CurrentAmount) * 100) / 100
+    : Infinity
+
+  const effectiveSavings = Math.min(savings, remainingTarget)
+  const isCapped = savings > remainingTarget && remainingTarget < Infinity
+  const effectiveRoundedTotal = Math.round((BASE + effectiveSavings) * 100) / 100
+  const payTotal = method === 'savelah' ? effectiveRoundedTotal : BASE
 
   const isReady = method !== '' && (
     method !== 'savelah' || (
@@ -93,7 +101,7 @@ export function MerchantSimulationForm() {
     : method === 'savelah'
       ? !selectedGoal
         ? 'Select a savings goal to continue'
-        : `Pay ${fmt(roundedTotal)} with SaveLah`
+        : `Pay ${fmt(effectiveRoundedTotal)} with SaveLah`
       : `Pay ${fmt(BASE)} with ${method === 'visa' ? 'Visa' : 'PayNow'}`
 
   const handlePay = async () => {
@@ -102,25 +110,13 @@ export function MerchantSimulationForm() {
       setLoading(true); setError(null)
       if (method === 'savelah') {
         const uid = Number(getUserId())
-        const token = document.cookie.split("; ").find(c => c.startsWith("auth_token="))?.split("=")[1]
-        const res = await fetch(
-          "https://personal-39ukomme.outsystemscloud.com/PaymentGateway_CS/rest/PaymentGatewayAPI/ProcessMerchantPayment",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: token ?? "" },
-            body: JSON.stringify({
-              UserId: uid, MerchantId: 1,
-              ItemAmount: BASE, SavingsAmount: savings,
-              Currency: "SGD", GoalId: Number(selectedGoal),
-              BankTransferId: "", MonthlyTransfersId: 0,
-            }),
-          }
-        )
-        const raw = await res.text()
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = JSON.parse(raw)
-        if (data.HasError) throw new Error(data.ErrorMessage || "Payment failed")
-        setSavedAmt(savings)
+        await processPayment({
+          UserId: uid, MerchantId: 1,
+          ItemAmount: BASE, SavingsAmount: effectiveSavings,
+          Currency: "SGD", GoalId: Number(selectedGoal),
+          BankTransferId: "", MonthlyTransfersId: 0,
+        })
+        setSavedAmt(effectiveSavings)
       }
       setStep(3)
     } catch (err: any) {
@@ -377,14 +373,19 @@ export function MerchantSimulationForm() {
                         style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1.5px solid #BBF7D0", fontSize: 12, background: "#fff", color: "#0F1923", fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" as const }}
                       />
                     )}
-                    {[["FairPrice total", fmt(BASE)], ["Rounded to", fmt(roundedTotal)]].map(([l, v]) => (
+                    {[["FairPrice total", fmt(BASE)], ["Rounded to", fmt(effectiveRoundedTotal)]].map(([l, v]) => (
                       <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B7F8E", padding: "2px 0" }}>
                         <span>{l}</span><span>{v}</span>
                       </div>
                     ))}
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: "#15803D", paddingTop: 7, marginTop: 5, borderTop: "1px solid #BBF7D0" }}>
-                      <span>You save</span><span>+{fmt(savings)}</span>
+                      <span>You save</span><span>+{fmt(effectiveSavings)}</span>
                     </div>
+                    {isCapped && (
+                      <div style={{ marginTop: 8, padding: "7px 10px", background: "#FEF9C3", border: "1px solid #FDE047", borderRadius: 7, fontSize: 11, color: "#854D0E" }}>
+                        ⚠ Round-up capped at {fmt(effectiveSavings)} - that's all you need to reach your goal target!
+                      </div>
+                    )}
                     <div style={{ marginTop: 12 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#15803D", textTransform: "uppercase" as const, letterSpacing: "0.5px", marginBottom: 5 }}>Save to goal</div>
                       <select
@@ -405,10 +406,10 @@ export function MerchantSimulationForm() {
                     <div style={{ fontSize: 11, color: "#6B7F8E" }}>You pay today</div>
                     <div style={{ fontSize: 17, fontWeight: 700, color: "#0F1923" }}>{fmt(payTotal)}</div>
                   </div>
-                  {method === 'savelah' && savings > 0 && (
+                  {method === 'savelah' && effectiveSavings > 0 && (
                     <div style={{ textAlign: "right" as const }}>
                       <div style={{ fontSize: 11, color: "#6B7F8E" }}>Going to savings</div>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: "#16a34a" }}>+{fmt(savings)}</div>
+                      <div style={{ fontSize: 17, fontWeight: 700, color: "#16a34a" }}>+{fmt(effectiveSavings)}</div>
                     </div>
                   )}
                 </div>

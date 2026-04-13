@@ -6,6 +6,7 @@ const GOAL_ATOMIC_BASE_URL = "https://personal-ntek2wae.outsystemscloud.com/Goal
 const TRANSFERS_BASE_URL = "https://personal-6fyixfa7.outsystemscloud.com/AutomaticTransferServiceModule/rest/AutomaticTransfersAPI";
 
 const LEDGER_BASE_URL = "https://personal-s6qgwhkb.outsystemscloud.com/DBEALedger/rest/LedgerNew";
+const WITHDRAWAL_BASE_URL = "https://personal-s6qgwhkb.outsystemscloud.com/DBEAWithdrawlComposite/rest/WithdrawalComposite";
 const PAYMENT_BASE_URL = "https://personal-8wlttpq2.outsystemscloud.com/PaymentAtomicService/rest/PaymentAPI";
 const PAYMENT_GATEWAY_URL = "https://personal-39ukomme.outsystemscloud.com/PaymentGateway_CS/rest/PaymentGatewayAPI";
 
@@ -147,6 +148,22 @@ export async function getGoal(goalId: number): Promise<GoalWithMembers> {
   });
   if (!res.ok) throw new Error("Failed to fetch goal.");
   return res.json();
+}
+
+export async function withdrawGoal(goalId: number): Promise<void> {
+  const res = await fetch(
+    `${WITHDRAWAL_BASE_URL}/WithdrawalOnRequest?GoalId=${goalId}`,
+    { method: "POST", headers: { Authorization: getAuthToken() } }
+  );
+  if (!res.ok) throw new Error("Failed to process withdrawal.");
+}
+
+export async function deleteGoal(goalId: number): Promise<void> {
+  const res = await fetch(`${GOAL_BASE_URL}/DeleteGoal?GoalId=${goalId}`, {
+    method: "DELETE",
+    headers: { Authorization: getAuthToken() },
+  });
+  if (!res.ok) throw new Error("Failed to delete goal.");
 }
 
 export async function createGoal(data: CreateGoalRequest): Promise<number> {

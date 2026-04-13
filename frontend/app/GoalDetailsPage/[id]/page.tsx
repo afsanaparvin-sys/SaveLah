@@ -20,9 +20,20 @@ import {
   Landmark,
 } from "lucide-react"
 import { goals as mockGoals, goalMembers, recentTransactions } from "@/lib/mock-data"
-import { getGoal, type GoalMember } from "@/lib/api"
+import { getGoal, getLedgerByUserId, deleteGoal, withdrawGoal, type GoalMember, type LedgerTransaction } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
 import { ContributeModal } from "@/components/Goals/ContributeModal"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Trash2, Banknote, Loader2 } from "lucide-react"
 
 interface GoalDetailsPageProps {
   params: Promise<{ id: string }>
@@ -37,6 +48,7 @@ interface PageGoal {
   deadline: string
   currency: string
   status: string
+  ownerId: number
   withdrawalType: number | null
   createdAt: string | null
   isMock: boolean
@@ -56,9 +68,10 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
 
   const mockGoal = mockGoals.find((g) => g.id === id)
   const currentUserId = parseInt(getUserId(), 10)
+  const router = useRouter()
 
   const [goal, setGoal] = useState<PageGoal | null>(
-    mockGoal ? { ...mockGoal, isMock: true, withdrawalType: null, createdAt: null } : null
+    mockGoal ? { ...mockGoal, ownerId: 0, isMock: true, withdrawalType: null, createdAt: null } : null
   )
   const [members, setMembers] = useState<PageMember[]>(
     mockGoal
@@ -68,10 +81,18 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
   const [loading, setLoading] = useState(!mockGoal)
   const [error, setError] = useState(false)
   const [contributeOpen, setContributeOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [withdrawLoading, setWithdrawLoading] = useState(false)
+  const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false)
+  const [withdrawSuccess, setWithdrawSuccess] = useState(false)
+  const [ledger, setLedger] = useState<LedgerTransaction[]>([])
 
   const loadGoal = () => {
     const numericId = parseInt(id, 10)
     if (isNaN(numericId)) { setError(true); return }
+    getLedgerByUserId(currentUserId)
+      .then((txs) => setLedger(txs.filter((t) => t.GoalId === numericId)))
+      .catch(() => {})
     getGoal(numericId)
       .then(({ Goal, Members }) => {
         setGoal({
@@ -82,7 +103,8 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
           currentAmount: Goal.CurrentAmount ?? 0,
           deadline: Goal.Deadline,
           currency: Goal.Currency,
-          status: Goal.Status === 1 ? "active" : Goal.Status === 2 ? "completed" : "cancelled",
+          status: Goal.Status === 1 ? "active" : Goal.Status === 2 ? "completed" : Goal.Status === 3 ? "cancelled" : "withdrawn",
+          ownerId: Goal.OwnerId,
           withdrawalType: Goal.WithdrawalType ?? null,
           createdAt: Goal.CreatedAt ?? null,
           isMock: false,
@@ -107,9 +129,24 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
     loadGoal()
   }, [id])
 
+  const typeMap: Record<string, "deposit" | "round-up" | "monthly-deposit" | "weekly-deposit" | "withdrawal" | "transfer"> = {
+    "1": "deposit",
+    "2": "round-up",
+    "3": "monthly-deposit",
+    "4": "weekly-deposit",
+    "5": "withdrawal",
+  }
+
   const transactions = goal?.isMock
     ? recentTransactions.filter((t) => t.goalName === goal?.title)
-    : []
+    : ledger.map((t) => ({
+        id: String(t.LedgerId),
+        type: typeMap[t.Type] ?? "transfer",
+        goalName: goal?.title ?? "",
+        amount: t.Amount,
+        currency: t.Currency || goal?.currency || "SGD",
+        date: t.CreatedOn,
+      }))
 
   const formatCurrency = (amount: number, currency: string = "USD") => {
     return new Intl.NumberFormat("en-US", {
@@ -204,12 +241,12 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
                     className={
                       goal.status === "active"
                         ? "bg-success/10 text-success"
-                        : goal.status === "completed"
+                        : goal.status === "completed" || goal.status === "withdrawn"
                         ? "bg-primary/10 text-primary"
                         : "bg-destructive/10 text-destructive"
                     }
                   >
-                    {goal.status === "active" ? "Active" : goal.status === "completed" ? "Completed" : "Cancelled"}
+                    {goal.status === "active" ? "Active" : goal.status === "completed" ? "Completed" : goal.status === "withdrawn" ? "Completed & Withdrawn" : "Cancelled"}
                   </Badge>
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
@@ -245,11 +282,144 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
                 <p className="text-sm text-muted-foreground">
                   of {formatCurrency(goal.targetAmount, goal.currency)} target
                 </p>
-                {myMember && goal.status === "active" && myMember.contributionTarget > myMember.currentContribution && (
-                  <Button className="mt-3" onClick={() => setContributeOpen(true)}>
-                    Contribute
-                  </Button>
-                )}
+                <div className="flex justify-end gap-2 mt-3">
+                  {myMember && goal.status === "active" && myMember.contributionTarget > myMember.currentContribution && (
+                    <Button onClick={() => setContributeOpen(true)}>
+                      Contribute
+                    </Button>
+                  )}
+                  {!goal.isMock && goal.ownerId === currentUserId && (
+                    <>
+                      {/* Withdraw Button */}
+                      <AlertDialog open={withdrawSuccess} onOpenChange={setWithdrawSuccess}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Funds Disbursed 🎉</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {goal.withdrawalType === 2
+                                ? "The funds have been disbursed and split proportionally to each member's bank account based on their contributions."
+                                : "The funds have been disbursed in full to the goal owner's bank account."}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogAction onClick={() => router.push("/GoalsPage")}>
+                              Done
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      {/* Withdraw confirmation dialog */}
+                      <Dialog open={withdrawConfirmOpen} onOpenChange={(o) => { if (!withdrawLoading) setWithdrawConfirmOpen(o) }}>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>
+                              {goal.status === "active" ? "Cancel goal and withdraw funds?" : "Withdraw funds now?"}
+                            </DialogTitle>
+                            <DialogDescription>
+                              {goal.status === "active"
+                                ? `This will cancel the goal "${goal.title}" and disburse all funds (${formatCurrency(goal.currentAmount, goal.currency)}) to ${goal.withdrawalType === 2 ? "each member based on their contributions" : "the goal owner"}. This cannot be undone.`
+                                : `This will withdraw all funds (${formatCurrency(goal.currentAmount, goal.currency)}) from "${goal.title}" to ${goal.withdrawalType === 2 ? "each member based on their contributions" : "the goal owner"}. This cannot be undone.`}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setWithdrawConfirmOpen(false)} disabled={withdrawLoading}>
+                              Cancel
+                            </Button>
+                            <Button
+                              variant={goal.status === "active" ? "destructive" : "default"}
+                              disabled={withdrawLoading}
+                              onClick={async () => {
+                                setWithdrawLoading(true)
+                                try {
+                                  await withdrawGoal(parseInt(id, 10))
+                                  setWithdrawConfirmOpen(false)
+                                  setWithdrawSuccess(true)
+                                } catch {
+                                  toast.error("Failed to process withdrawal.")
+                                } finally {
+                                  setWithdrawLoading(false)
+                                }
+                              }}
+                            >
+                              {withdrawLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing...</> : "Confirm"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span tabIndex={0}>
+                            <Button
+                              variant={goal.status === "active" ? "destructive" : "default"}
+                              disabled={goal.status !== "active" && goal.status !== "completed"}
+                              className="gap-2"
+                              onClick={() => setWithdrawConfirmOpen(true)}
+                            >
+                              <Banknote className="h-4 w-4" />
+                              {goal.status === "active" ? "Cancel & Withdraw Funds" : "Withdraw Funds Now!"}
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        {goal.status !== "active" && goal.status !== "completed" && (
+                          <TooltipContent>
+                            Withdrawal is only available for active or completed goals
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                      {/* Delete Button */}
+                      <AlertDialog>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span tabIndex={0}>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  disabled={goal.status !== "active" || goal.currentAmount !== 0}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                            </span>
+                          </TooltipTrigger>
+                          {(goal.status !== "active" || goal.currentAmount !== 0) && (
+                            <TooltipContent>
+                              Goals can only be deleted if they are active and have no contributions
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete goal?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete <strong>{goal.title}</strong>. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={async () => {
+                                setDeleteLoading(true)
+                                try {
+                                  await deleteGoal(parseInt(id, 10))
+                                  toast.success("Goal deleted.")
+                                  router.push("/GoalsPage")
+                                } catch {
+                                  toast.error("Failed to delete goal.")
+                                } finally {
+                                  setDeleteLoading(false)
+                                }
+                              }}
+                            >
+                              {deleteLoading ? "Deleting..." : "Delete"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
