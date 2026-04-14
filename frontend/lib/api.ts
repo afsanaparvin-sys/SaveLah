@@ -224,8 +224,8 @@ export interface UserProfileData {
   Name: string;
   Email: string;
   MobilePhone: string;
-  BankAccountId: string;
-  BankAccountNumber: string;
+  BankAccountId?: string;
+  BankAccountNumber?: string;
 }
 
 export async function getUserProfile(): Promise<UserProfileData> {
@@ -236,11 +236,11 @@ export async function getUserProfile(): Promise<UserProfileData> {
   return res.json();
 }
 
-export async function updateUserProfile(data: UserProfileData): Promise<void> {
+export async function updateUserProfile(data: Pick<UserProfileData, "Name" | "Email" | "MobilePhone">): Promise<void> {
   const res = await fetch(`${PROFILE_BASE_URL}/UpdateCurrentUserProfileDetails`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Authorization: getAuthToken() },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ Name: data.Name, Email: data.Email, MobilePhone: data.MobilePhone }),
   });
   if (!res.ok) throw new Error("Failed to update profile.");
 }
@@ -309,13 +309,6 @@ export async function getLedgerByUserId(userId: number): Promise<LedgerTransacti
   return data.filter((tx) => tx.LedgerId !== 0);
 }
 
-export async function getGoalsByCurrentUser(): Promise<SavingsGoal[]> {
-  const res = await fetch(`${GOAL_ATOMIC_BASE_URL}/GetGoalsByCurrentUserId`, {
-    headers: { Authorization: getAuthToken() },
-  });
-  if (!res.ok) throw new Error("Failed to fetch goals.");
-  return res.json();
-}
 
 export interface AutoTransfer {
   MonthlyId: number

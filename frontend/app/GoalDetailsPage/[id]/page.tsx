@@ -554,7 +554,7 @@ export default function GoalDetailsPage({ params }: GoalDetailsPageProps) {
           {/* Transactions */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Recent Contributions</CardTitle>
+              <CardTitle className="text-lg">Your Contribution History</CardTitle>
             </CardHeader>
             <CardContent>
               {transactions.length > 0 ? (

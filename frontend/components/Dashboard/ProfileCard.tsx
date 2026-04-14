@@ -25,6 +25,7 @@ function InfoRow({
   isEditing,
   editedProfile,
   onChange,
+  readOnly = false,
 }: {
   icon: React.ElementType
   label: string
@@ -33,6 +34,7 @@ function InfoRow({
   isEditing: boolean
   editedProfile: UserProfile
   onChange: (field: keyof UserProfile, value: string) => void
+  readOnly?: boolean
 }) {
   return (
     <div className="flex items-center gap-4 py-3">
@@ -41,7 +43,7 @@ function InfoRow({
       </div>
       <div className="flex-1">
         <p className="text-sm text-muted-foreground">{label}</p>
-        {isEditing && field !== "bankAccountId" ? (
+        {isEditing && !readOnly ? (
           <Input
             value={editedProfile[field]}
             onChange={(e) => onChange(field, e.target.value)}
@@ -77,8 +79,7 @@ export function ProfileCard({ profile }: ProfileCardProps) {
     const hasChanges =
       editedProfile.name !== profile.name ||
       editedProfile.email !== profile.email ||
-      editedProfile.phone !== profile.phone ||
-      editedProfile.bankAccountNumber !== profile.bankAccountNumber
+      editedProfile.phone !== profile.phone
 
     if (!hasChanges) {
       setIsEditing(false)
@@ -91,8 +92,6 @@ export function ProfileCard({ profile }: ProfileCardProps) {
         Name: editedProfile.name,
         Email: editedProfile.email,
         MobilePhone: editedProfile.phone,
-        BankAccountId: editedProfile.bankAccountId,
-        BankAccountNumber: editedProfile.bankAccountNumber,
       })
       setIsEditing(false)
       toast.success("Profile updated successfully.")
@@ -159,8 +158,8 @@ export function ProfileCard({ profile }: ProfileCardProps) {
           <CardTitle className="text-lg">Bank Information</CardTitle>
         </CardHeader>
         <CardContent className="divide-y">
-          <InfoRow icon={Building2} label="Bank Account ID" value={editedProfile.bankAccountId} field="bankAccountId" isEditing={isEditing} editedProfile={editedProfile} onChange={handleChange} />
-          <InfoRow icon={CreditCard} label="Account Number" value={editedProfile.bankAccountNumber} field="bankAccountNumber" isEditing={isEditing} editedProfile={editedProfile} onChange={handleChange} />
+          <InfoRow icon={Building2} label="Bank Account ID" value={editedProfile.bankAccountId} field="bankAccountId" isEditing={isEditing} editedProfile={editedProfile} onChange={handleChange} readOnly />
+          <InfoRow icon={CreditCard} label="Account Number" value={editedProfile.bankAccountNumber} field="bankAccountNumber" isEditing={isEditing} editedProfile={editedProfile} onChange={handleChange} readOnly />
         </CardContent>
       </Card>
     </div>

@@ -10,7 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { RefreshCw, Trash2, DollarSign, Loader2 } from "lucide-react"
-import { getCurrentUserTransfers, getGoalsByCurrentUser, getAllGoalsByUser, deleteAutoTransfer, triggerAutomaticTransfer, type AutoTransfer, type SavingsGoal, type GoalContributionRecord } from "@/lib/api"
+import { getCurrentUserTransfers, getAllGoalsByUser, deleteAutoTransfer, triggerAutomaticTransfer, type AutoTransfer, type GoalContributionRecord } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
 import { toast } from "sonner"
 
@@ -30,16 +30,14 @@ function getNextTransferDate(frequency: string): string {
 
 export default function TransfersPage() {
   const [transfers, setTransfers] = useState<AutoTransfer[]>([])
-  const [goals, setGoals] = useState<SavingsGoal[]>([])
   const [contributions, setContributions] = useState<GoalContributionRecord[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchData = async () => {
     try {
       const userId = parseInt(getUserId(), 10)
-      const [t, g, c] = await Promise.all([getCurrentUserTransfers(), getGoalsByCurrentUser(), getAllGoalsByUser(userId)])
+      const [t, c] = await Promise.all([getCurrentUserTransfers(), getAllGoalsByUser(userId)])
       setTransfers(t)
-      setGoals(g)
       setContributions(c)
     } catch {
       // silently fail — table will just be empty
@@ -76,10 +74,10 @@ export default function TransfersPage() {
   }
 
   const goalTitle = (goalId: number) =>
-    goals.find((g) => g.Id === goalId)?.Title ?? `Goal #${goalId}`
+    contributions.find((c) => c.SavingsGoal.Id === goalId)?.SavingsGoal.Title ?? `Goal #${goalId}`
 
   const goalStatus = (goalId: number) =>
-    goals.find((g) => g.Id === goalId)?.Status ?? 1
+    contributions.find((c) => c.SavingsGoal.Id === goalId)?.SavingsGoal.Status ?? 1
 
   const myContributionReached = (goalId: number) => {
     const record = contributions.find((c) => c.SavingsGoal.Id === goalId)
@@ -223,7 +221,7 @@ export default function TransfersPage() {
 
           <div>
             <AutoTransferForm
-              goals={goals.map((g) => ({ id: String(g.Id), title: g.Title }))}
+              goals={contributions.map((c) => ({ id: String(c.SavingsGoal.Id), title: c.SavingsGoal.Title }))}
               onTransferCreated={fetchData}
             />
           </div>
